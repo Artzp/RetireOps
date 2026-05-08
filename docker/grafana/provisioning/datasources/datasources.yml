@@ -1,0 +1,40 @@
+# Grafana Datasource Configuration for RetireOps
+# @see docs/source-of-truth/01-overview.md
+
+apiVersion: 1
+
+datasources:
+  # Prometheus - Primary metrics store
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: '15s'
+      httpMethod: POST
+
+  # PostgreSQL - Direct database access for custom queries
+  - name: PostgreSQL
+    type: postgres
+    url: postgres:5432
+    database: retireops
+    user: ${POSTGRES_USER}
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    editable: false
+
+  # Loki - Log aggregation (when enabled)
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 1000

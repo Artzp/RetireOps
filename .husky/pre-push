@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Run the same local gate CI uses before pushing.
+corepack pnpm check:ci

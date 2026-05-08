@@ -1,0 +1,37 @@
+{
+  "name": "@retireops/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RetireOps Calculation Worker",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "tsx watch src/worker.ts",
+    "build": "tsc",
+    "start": "node dist/worker.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@retireops/calculation-engine": "workspace:*",
+    "@retireops/shared": "workspace:*",
+    "bullmq": "^5.1.0",
+    "ioredis": "^5.3.2",
+    "kysely": "^0.28.14",
+    "pg": "^8.11.3",
+    "winston": "^3.11.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/pg": "^8.10.9",
+    "@vitest/coverage-v8": "^1.2.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

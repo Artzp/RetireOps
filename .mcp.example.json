@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "example-local-tool": {
+      "command": "node",
+      "args": ["path/to/server.js"],
+      "cwd": "path/to/retireops",
+      "env": {
+        "EXAMPLE_ENV_VAR": "replace-me"
+      }
+    }
+  }
+}

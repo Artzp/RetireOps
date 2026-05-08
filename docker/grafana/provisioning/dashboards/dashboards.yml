@@ -1,0 +1,16 @@
+# Grafana Dashboard Provisioning for RetireOps
+# @see docs/source-of-truth/01-overview.md
+
+apiVersion: 1
+
+providers:
+  - name: 'RetireOps Dashboards'
+    orgId: 1
+    folder: 'RetireOps'
+    folderUid: 'retireops'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

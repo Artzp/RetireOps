@@ -1,0 +1,44 @@
+# Web Package .dockerignore
+
+# Dependencies
+node_modules
+
+# Build output (Next.js)
+.next
+out
+dist
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+coverage
+cypress
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode
+.idea
+
+# Environment (use Docker secrets)
+.env
+.env.*
+!.env.example
+.env.local
+
+# Documentation
+*.md
+
+# Logs
+*.log
+
+# Storybook
+.storybook
+storybook-static

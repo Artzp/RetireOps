@@ -1,0 +1,212 @@
+# Dependabot Configuration for RetireOps
+# @see docs/source-of-truth/01-overview.md
+
+version: 2
+updates:
+  # Root package.json and pnpm-lock.yaml
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Toronto'
+    open-pull-requests-limit: 10
+    reviewers:
+      - 'owner'
+    labels:
+      - 'dependencies'
+      - 'npm'
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      # Group TypeScript-related updates
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      # Group ESLint-related updates
+      eslint:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - '@typescript-eslint/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      # Group testing libraries
+      testing:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+          - 'jest*'
+          - '@jest/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      # Group build tools
+      build-tools:
+        patterns:
+          - 'tsup'
+          - 'esbuild'
+          - 'rollup*'
+          - 'vite*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Shared types package
+  - package-ecosystem: 'npm'
+    directory: '/packages/shared'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'shared'
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      zod:
+        patterns:
+          - 'zod'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Calculation engine package
+  - package-ecosystem: 'npm'
+    directory: '/packages/calculation-engine'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'calculation-engine'
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      decimal:
+        patterns:
+          - 'decimal.js'
+          - 'big.js'
+          - 'bignumber.js'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # API package
+  - package-ecosystem: 'npm'
+    directory: '/packages/api'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'api'
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      fastify:
+        patterns:
+          - 'fastify'
+          - '@fastify/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      prisma:
+        patterns:
+          - 'prisma'
+          - '@prisma/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Web package
+  - package-ecosystem: 'npm'
+    directory: '/packages/web'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'npm'
+      - 'web'
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      next:
+        patterns:
+          - 'next'
+          - 'next-*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react*'
+        update-types:
+          - 'minor'
+          - 'patch'
+      tailwind:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+          - 'postcss*'
+          - 'autoprefixer'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+    commit-message:
+      prefix: 'chore(ci)'
+    groups:
+      actions:
+        patterns:
+          - 'actions/*'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # Docker images
+  - package-ecosystem: 'docker'
+    directory: '/docker/api'
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'chore(docker)'
+
+  - package-ecosystem: 'docker'
+    directory: '/docker/web'
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'chore(docker)'

@@ -1,0 +1,134 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: retireops-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-retireops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retireops_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-retireops}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-retireops}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: retireops-redis-dev
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data_dev:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Gateway (development with hot reload)
+  api:
+    build:
+      context: .
+      dockerfile: ./packages/api/Dockerfile.dev
+    container_name: retireops-api-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-retireops}:${POSTGRES_PASSWORD:-retireops_dev_password}@postgres:5432/${POSTGRES_DB:-retireops}
+      REDIS_URL: redis://redis:6379
+      PORT: 3001
+      # Google OAuth (set in .env file)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/callback/google}
+      # Dev-only: loosen the per-window rate limit so iterative testing
+      # doesn't trip the 100/15min default in packages/api/src/middleware/rate-limiter.ts.
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-10000}
+    ports:
+      - '3001:3001'
+      - '9229:9229' # Debug port
+    volumes:
+      - ./packages/api:/app/packages/api
+      - ./packages/shared:/app/packages/shared
+      - ./packages/calculation-engine:/app/packages/calculation-engine
+      - /app/node_modules
+      - /app/packages/api/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/calculation-engine/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Worker (development with hot reload)
+  worker:
+    build:
+      context: .
+      dockerfile: ./packages/worker/Dockerfile.dev
+    container_name: retireops-worker-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-retireops}:${POSTGRES_PASSWORD:-retireops_dev_password}@postgres:5432/${POSTGRES_DB:-retireops}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '9230:9229' # Debug port
+    volumes:
+      - ./packages/worker:/app/packages/worker
+      - ./packages/shared:/app/packages/shared
+      - ./packages/calculation-engine:/app/packages/calculation-engine
+      - /app/node_modules
+      - /app/packages/worker/node_modules
+      - /app/packages/shared/node_modules
+      - /app/packages/calculation-engine/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Web Frontend (Next.js development with hot reload)
+  web:
+    build:
+      context: .
+      dockerfile: ./packages/web/Dockerfile.dev
+    container_name: retireops-web-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      # Server-side URL for Next.js rewrites (Docker internal network).
+      # Browser uses relative /api/* which Next.js proxies here — this keeps
+      # the app working from any host (localhost, LAN IP, etc.) without
+      # baking a hostname into the browser bundle.
+      API_URL: http://api:3001
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./packages/web:/app/packages/web
+      - ./packages/shared:/app/packages/shared
+      - /app/node_modules
+      - /app/packages/web/node_modules
+      - /app/packages/web/.next
+    depends_on:
+      - api
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+networks:
+  default:
+    name: retireops-dev-network

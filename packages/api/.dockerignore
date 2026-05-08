@@ -1,0 +1,33 @@
+# API Package .dockerignore
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+__mocks__
+coverage
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# IDE
+.vscode
+.idea
+
+# Environment (use Docker secrets)
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+
+# Logs
+*.log

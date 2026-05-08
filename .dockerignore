@@ -1,0 +1,86 @@
+# RetireOps Root .dockerignore
+# Files and directories to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (will be installed in container)
+node_modules
+**/node_modules
+
+# Build outputs (will be generated in container)
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+coverage
+**/coverage
+
+# IDE and Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment files (use Docker secrets instead)
+.env
+.env.*
+!.env.example
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+**/__mocks__
+
+# Docker files (prevent recursive includes)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+azure-pipelines.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+secrets
+credentials
+
+# Package manager locks (use pnpm only)
+package-lock.json
+yarn.lock

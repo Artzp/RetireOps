@@ -1,0 +1,336 @@
+version: '3.9'
+
+services:
+  # ============================================================================
+  # LOAD BALANCER
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: retireops-nginx
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+      - api
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # WEB FRONTEND (Next.js) - 3 replicas for load balancing
+  # ============================================================================
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: retireops-web
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://api:4000/api
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - retireops-network
+    depends_on:
+      - api
+
+  # ============================================================================
+  # API GATEWAY - 3 replicas
+  # ============================================================================
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: retireops-api
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_URL=postgresql://retireops:${DB_PASSWORD}@postgres:5432/retireops
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - retireops-network
+
+  # ============================================================================
+  # CALCULATION WORKERS - 5 replicas for heavy computation
+  # ============================================================================
+  worker:
+    build:
+      context: ./apps/worker
+      dockerfile: Dockerfile
+    container_name: retireops-worker
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://retireops:${DB_PASSWORD}@postgres:5432/retireops
+      - REDIS_URL=redis://redis:6379
+      - WORKER_CONCURRENCY=5
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - retireops-network
+
+  # ============================================================================
+  # POSTGRESQL DATABASE - Primary data store
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: retireops-postgres
+    environment:
+      - POSTGRES_DB=retireops
+      - POSTGRES_USER=retireops
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-collate=C --lc-ctype=C
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - '5432:5432'
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+        reservations:
+          cpus: '1.0'
+          memory: 2048M
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U retireops -d retireops']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - retireops-network
+    restart: unless-stopped
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+
+  # ============================================================================
+  # REDIS - Cache & Queue
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: retireops-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 2gb
+      --maxmemory-policy noeviction
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    ports:
+      - '6379:6379'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 1024M
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # MONITORING - Prometheus
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: retireops-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - '9090:9090'
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # MONITORING - Grafana
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: retireops-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - '3001:3000'
+    depends_on:
+      - prometheus
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # LOG AGGREGATION - Loki
+  # ============================================================================
+  loki:
+    image: grafana/loki:latest
+    container_name: retireops-loki
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - '3100:3100'
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # LOG SHIPPER - Promtail
+  # ============================================================================
+  promtail:
+    image: grafana/promtail:latest
+    container_name: retireops-promtail
+    volumes:
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # BACKUP SERVICE
+  # ============================================================================
+  backup:
+    image: postgres:16-alpine
+    container_name: retireops-backup
+    environment:
+      - PGHOST=postgres
+      - PGUSER=retireops
+      - PGPASSWORD=${DB_PASSWORD}
+      - PGDATABASE=retireops
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh
+    command: >
+      sh -c "
+      while true; do
+        echo 'Running backup...'
+        pg_dump -Fc -f /backups/retireops_$(date +%Y%m%d_%H%M%S).dump
+        find /backups -name '*.dump' -mtime +7 -delete
+        echo 'Backup complete. Sleeping for 24 hours...'
+        sleep 86400
+      done
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - retireops-network
+    restart: unless-stopped
+
+# ==============================================================================
+# VOLUMES
+# ==============================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+
+# ==============================================================================
+# NETWORKS
+# ==============================================================================
+networks:
+  retireops-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

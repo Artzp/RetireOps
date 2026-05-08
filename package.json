@@ -1,0 +1,68 @@
+{
+  "name": "retireops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Canadian Retirement Planning Software",
+  "scripts": {
+    "dev": "corepack pnpm -r --parallel run dev",
+    "build": "corepack pnpm -r run build",
+    "test": "corepack pnpm -r run test",
+    "test:watch": "corepack pnpm -r --parallel run test:watch",
+    "lint": "corepack pnpm exec eslint .",
+    "lint:fix": "corepack pnpm exec eslint . --fix",
+    "format": "corepack pnpm exec prettier --write .",
+    "format:check": "corepack pnpm exec prettier --check .",
+    "typecheck": "corepack pnpm -r run typecheck",
+    "check": "corepack pnpm check:ci",
+    "check:ci": "corepack pnpm lint && corepack pnpm format:check && corepack pnpm typecheck && corepack pnpm build && corepack pnpm test",
+    "check:security": "corepack pnpm audit --audit-level=high",
+    "clean": "corepack pnpm -r run clean && corepack pnpm exec rimraf node_modules",
+    "prepare": "corepack pnpm exec husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^20.11.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^7.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "pnpm": {
+    "overrides": {
+      "ajv@<6.14.0": "^6.14.0",
+      "brace-expansion@<1.1.13": "^1.1.13",
+      "brace-expansion@>=2.0.0 <2.0.3": "^2.0.3",
+      "esbuild@<0.25.0": "^0.25.0",
+      "flatted@<3.4.2": "^3.4.2",
+      "glob@>=10.2.0 <10.5.0": "^10.5.0",
+      "minimatch@<3.1.4": "^3.1.4",
+      "minimatch@>=9.0.0 <9.0.7": "^9.0.7",
+      "path-to-regexp@<0.1.13": "0.1.13",
+      "picomatch@<2.3.2": "^2.3.2",
+      "picomatch@>=4.0.0 <4.0.4": "^4.0.4",
+      "postcss@<8.5.10": "^8.5.10",
+      "qs@<6.14.2": "^6.14.2",
+      "rollup@>=4.0.0 <4.59.0": "^4.59.0",
+      "yaml@>=2.0.0 <2.8.3": "^2.8.3"
+    }
+  }
+}

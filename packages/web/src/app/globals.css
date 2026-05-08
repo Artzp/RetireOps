@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* === shadcn semantic -> ds-* remap (Phase 6) === */
+    --background: var(--ds-background);
+    --foreground: var(--ds-on-background);
+    --card: var(--ds-surface);
+    --card-foreground: var(--ds-on-surface);
+    --popover: var(--ds-surface);
+    --popover-foreground: var(--ds-on-surface);
+    --primary: var(--ds-primary);
+    --primary-foreground: var(--ds-on-primary);
+    --secondary: var(--ds-surface-raised);
+    --secondary-foreground: var(--ds-on-surface);
+    --muted: var(--ds-surface-raised);
+    --muted-foreground: var(--ds-on-surface-variant);
+    --accent: var(--ds-surface-overlay);
+    --accent-foreground: var(--ds-on-surface);
+    --destructive: var(--ds-error);
+    --destructive-foreground: var(--ds-on-error);
+    --border: var(--ds-outline-variant);
+    --input: var(--ds-outline-variant);
+    --ring: var(--ds-primary);
+    --radius: 0.5rem;
+
+    /* === Editorial Stability ds-* palette (42 tokens) === */
+
+    /* Surfaces */
+    --ds-background: 216 33% 97%;
+    --ds-surface: 0 0% 100%;
+    --ds-surface-raised: 218 31% 95%;
+    --ds-surface-overlay: 219 35% 92%;
+    --ds-surface-container: 214 48% 20%;
+    --ds-surface-bright: 0 0% 100%;
+    --ds-surface-dim: 216 20% 90%;
+
+    /* Primary — forest green */
+    --ds-primary: 112 34% 31%;
+    --ds-on-primary: 0 0% 100%;
+    --ds-primary-container: 107 43% 83%;
+    --ds-on-primary-container: 111 49% 15%;
+    --ds-primary-fixed: 112 34% 31%;
+    --ds-primary-fixed-dim: 112 28% 26%;
+    --ds-on-primary-fixed: 0 0% 100%;
+
+    /* Secondary — deep navy */
+    --ds-secondary: 209 81% 8%;
+    --ds-on-secondary: 0 0% 100%;
+    --ds-secondary-container: 207 73% 88%;
+    --ds-on-secondary-container: 204 100% 8%;
+    --ds-secondary-fixed: 209 81% 8%;
+    --ds-secondary-fixed-dim: 209 70% 14%;
+
+    /* Tertiary — warm gold */
+    --ds-tertiary: 43 100% 24%;
+    --ds-on-tertiary: 0 0% 100%;
+    --ds-tertiary-container: 41 85% 88%;
+    --ds-on-tertiary-container: 43 100% 10%;
+    --ds-tertiary-fixed: 41 94% 60%;
+    --ds-tertiary-fixed-dim: 41 80% 50%;
+
+    /* Text / content */
+    --ds-on-background: 211 53% 11%;
+    --ds-on-surface: 214 48% 20%;
+    --ds-on-surface-variant: 209 22% 31%;
+
+    /* Semantic */
+    --ds-error: 0 75% 42%;
+    --ds-on-error: 0 0% 100%;
+    --ds-error-container: 6 100% 92%;
+    --ds-on-error-container: 0 100% 15%;
+
+    /* Outline / dividers */
+    --ds-outline: 208 12% 49%;
+    --ds-outline-variant: 212 14% 79%;
+
+    /* Inverse */
+    --ds-inverse-surface: 214 48% 20%;
+    --ds-inverse-on-surface: 216 33% 97%;
+    --ds-inverse-primary: 107 43% 70%;
+
+    /* Utility */
+    --ds-shadow: 209 81% 8%;
+    --ds-scrim: 0 0% 0%;
+    --ds-warm-brown: 37 100% 6%;
+    --ds-warm-brown-container: 37 80% 90%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .year-by-year-grid {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .year-by-year-grid th {
+    line-height: 1.15;
+    white-space: normal;
+    word-break: normal;
+  }
+
+  .year-by-year-grid td {
+    white-space: nowrap;
+  }
+
+  .year-by-year-grid tbody td {
+    border-bottom: 1px solid hsl(var(--ds-outline-variant) / 0.5);
+  }
+
+  .year-by-year-grid tbody td[data-column-key='federalTax'],
+  .year-by-year-grid tbody td[data-column-key='rrspBalance'],
+  .year-by-year-grid tbody td[data-column-key='livingExpenses'],
+  .year-by-year-grid tbody td[data-column-key='totalNetWorth'],
+  .year-by-year-grid tbody td[data-column-key='householdNetWorth'] {
+    border-left: 1px solid hsl(var(--ds-outline-variant));
+  }
+
+  .year-by-year-grid tbody tr:hover td {
+    background-color: hsl(var(--ds-surface-raised));
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * Phase 3 — Cascade highlight (UI-03)
+ *
+ * Cells in the YearByYearTab whose formatted display value changed since the
+ * last save get `data-cascade-highlight="true"` set by YearByYearTab. The
+ * background tints to bg-ds-primary/10, then transitions to transparent over
+ * 5 seconds via the CSS rule below.
+ *
+ * Both rules must declare `transition: background-color 5000ms ease-out;` so
+ * the CSS engine can interpolate the fade in BOTH directions (highlight on
+ * AND highlight off).
+ *
+ * @see .planning/phases/03-cascade-undo/03-CONTEXT.md - D-61
+ * @see .planning/phases/03-cascade-undo/03-UI-SPEC.md §Cascade Highlight Visual Contract
+ * --------------------------------------------------------------------------*/
+td[data-cascade-highlight='true'] {
+  background-color: hsl(var(--ds-primary) / 0.1);
+  transition: background-color 5000ms ease-out;
+}
+td[data-cascade-highlight='false'],
+td:not([data-cascade-highlight]) {
+  background-color: transparent;
+  transition: background-color 5000ms ease-out;
+}
+
+/* ----------------------------------------------------------------------------
+ * Printable report — paper layout overrides for /reports/[id].
+ * Tailwind's print: utilities cover the per-element hiding; this block sets
+ * paper-level concerns (page margins, light background, page-break behavior)
+ * that Tailwind cannot easily express.
+ * --------------------------------------------------------------------------*/
+@media print {
+  @page {
+    margin: 0.5in;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+  .report-section,
+  tr,
+  tbody {
+    break-inside: avoid;
+  }
+  .report-yearly-break {
+    break-before: page;
+  }
+}

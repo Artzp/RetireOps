@@ -1,0 +1,47 @@
+{
+  "name": "@retireops/calculation-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tax": {
+      "types": "./dist/tax/index.d.ts",
+      "import": "./dist/tax/index.js"
+    },
+    "./benefits": {
+      "types": "./dist/benefits/index.d.ts",
+      "import": "./dist/benefits/index.js"
+    },
+    "./accounts": {
+      "types": "./dist/accounts/index.d.ts",
+      "import": "./dist/accounts/index.js"
+    },
+    "./projection": {
+      "types": "./dist/projection/index.d.ts",
+      "import": "./dist/projection/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@retireops/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.2.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}
