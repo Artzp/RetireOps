@@ -2,7 +2,7 @@
   "name": "@retireops/web",
   "version": "0.1.0",
   "private": true,
-  "license": "BUSL-1.1",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "next dev",

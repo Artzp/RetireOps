@@ -102,7 +102,7 @@ export default function HomePage() {
               Ready to Take Control of Your Retirement?
             </h2>
             <p className="text-ds-on-secondary/80 mb-8">
-              Use the hosted app or self-host the source-available version for personal planning.
+              Use the hosted app or self-host the open source version for personal planning.
             </p>
             <Link href="/register">
               <Button

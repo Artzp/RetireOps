@@ -62,12 +62,12 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Source-available code</h2>
+            <h2 className="text-lg font-semibold text-foreground">Open source code</h2>
             <p>
-              The codebase is available under the Business Source License 1.1 during active
-              development. Personal and non-commercial self-hosting is allowed under that license.
-              Commercial hosting or commercial financial-planning services require a separate
-              commercial license until the applicable Change Date.
+              The codebase is available under AGPL-3.0-only. Self-hosting, including commercial use,
+              is allowed under that license. If you modify RetireOps and let users interact with it
+              over a network, those users must be able to obtain the corresponding source for the
+              modified version you are running.
             </p>
           </section>
         </div>

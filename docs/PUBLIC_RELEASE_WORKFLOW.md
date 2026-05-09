@@ -1,16 +1,16 @@
 # Public Release Workflow
 
-RetireOps uses a separate DEV repository and PUBLIC repository so everyday development can stay flexible while the source-available release history stays clean.
+RetireOps uses a separate DEV repository and PUBLIC repository so everyday development can stay flexible while the open source release history stays clean.
 
 - DEV repo: the private working repository.
-- PUBLIC repo: the clean source-available release repository.
+- PUBLIC repo: the clean open source release repository.
 
 ## Principles
 
 - Work normally in DEV.
 - Sync to PUBLIC only when preparing a public release.
 - Never push DEV history to PUBLIC.
-- Keep PUBLIC history clean, reviewable, and safe for source-available publication.
+- Keep PUBLIC history clean, reviewable, and safe for open source publication.
 - Do not push PUBLIC until the privacy scan and project checks pass.
 
 ## Release Steps
