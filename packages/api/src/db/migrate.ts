@@ -26,6 +26,12 @@ async function migrate() {
     `.execute(db);
     logger.info('Created users table');
 
+    // docker/postgres/init.sql seeds password_hash as NOT NULL, but OAuth users
+    // (Google sign-in) never have a password — drop the constraint if a previous
+    // init left it. Idempotent: no-op when already nullable.
+    await sql`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`.execute(db);
+    logger.info('Ensured password_hash is nullable on users');
+
     // Create oauth_providers table
     await sql`
       CREATE TABLE IF NOT EXISTS oauth_providers (
