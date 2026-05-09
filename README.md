@@ -1,12 +1,18 @@
 # RetireOps
 
+[![Live demo](https://img.shields.io/badge/live-retireops.ca-2ea44f)](https://retireops.ca)
+[![License: AGPL v3.0](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+
 RetireOps is open source Canadian retirement planning software. It runs year-by-year cash flow projections across RRSP, RRIF, TFSA, LIRA, LIF, and non-registered accounts — accounting for federal and provincial taxes, CPP/OAS/GIS benefits, OAS clawback, and configurable withdrawal strategies.
+
+**Live demo:** <https://retireops.ca>
 
 The goal: numbers Canadians can trust, without locking people into expensive software.
 
 You can use it in two ways:
 
-- Use the hosted app when it is available.
+- Use the hosted app at <https://retireops.ca>.
 - Self-host it for free for your own personal use.
 
 ## Project Status

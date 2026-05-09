@@ -5,6 +5,14 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "description": "Canadian Retirement Planning Software",
+  "homepage": "https://retireops.ca",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Artzp/RetireOps.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Artzp/RetireOps/issues"
+  },
   "scripts": {
     "dev": "corepack pnpm -r --parallel run dev",
     "build": "corepack pnpm -r run build",
