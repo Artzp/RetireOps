@@ -199,10 +199,17 @@ RetireOps is licensed under AGPL-3.0-only. By submitting a contribution, you agr
 that your contribution is licensed under AGPL-3.0-only.
 
 The maintainers may offer hosted services, support, consulting, or separate
-commercial licensing for code they have the right to license separately. For
-large contributions, employer-owned contributions, or work intended for separate
-commercial licensing, maintainers may ask for a Contributor License Agreement
-before merging.
+commercial licensing for code they have the right to license separately.
+
+To keep that option available, all non-trivial outside contributions require
+acceptance of the RetireOps Contributor License Agreement in [CLA.md](./CLA.md).
+This includes code, tests, documentation, configuration, and design
+contributions submitted by pull request.
+
+By opening a pull request, you confirm that you have read and agree to the CLA.
+If you are contributing on behalf of an employer or another organization, you
+must have permission to submit the contribution under the CLA before opening the
+pull request.
 
 ## Coding Standards
 
