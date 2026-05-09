@@ -193,6 +193,17 @@ test(benefits): add CPP early/late adjustment test cases
 
 10. **Merge** once approved and all checks pass.
 
+## Contribution Licensing
+
+RetireOps is licensed under AGPL-3.0-only. By submitting a contribution, you agree
+that your contribution is licensed under AGPL-3.0-only.
+
+The maintainers may offer hosted services, support, consulting, or separate
+commercial licensing for code they have the right to license separately. For
+large contributions, employer-owned contributions, or work intended for separate
+commercial licensing, maintainers may ask for a Contributor License Agreement
+before merging.
+
 ## Coding Standards
 
 ### TypeScript

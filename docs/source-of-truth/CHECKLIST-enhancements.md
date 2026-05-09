@@ -198,7 +198,7 @@ This document tracks additions and enhancements needed to align the source-of-tr
   - Integration is the hard part, not algorithms
   - No proprietary secrets
   - Emphasis on polish and UX
-- [ ] Add section on "Contributing Guidelines" (for source-available development and delayed open-source licensing)
+- [ ] Add section on "Contributing Guidelines" (for open-source development)
 - [ ] Add "Non-Goals" section (what we won't build)
 
 ---

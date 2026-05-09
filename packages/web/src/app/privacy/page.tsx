@@ -59,8 +59,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-foreground">Your choices</h2>
             <p>
               You can choose not to enter sensitive financial information into the hosted version.
-              If you prefer full control, you can self-host the source-available version for
-              personal or other non-commercial use instead.
+              If you prefer full control, you can self-host the open source version instead.
             </p>
           </section>
 

@@ -1,6 +1,6 @@
 # RetireOps
 
-RetireOps is source-available Canadian retirement planning software. It runs year-by-year cash flow projections across RRSP, RRIF, TFSA, LIRA, LIF, and non-registered accounts — accounting for federal and provincial taxes, CPP/OAS/GIS benefits, OAS clawback, and configurable withdrawal strategies.
+RetireOps is open source Canadian retirement planning software. It runs year-by-year cash flow projections across RRSP, RRIF, TFSA, LIRA, LIF, and non-registered accounts — accounting for federal and provincial taxes, CPP/OAS/GIS benefits, OAS clawback, and configurable withdrawal strategies.
 
 The goal: numbers Canadians can trust, without locking people into expensive software.
 
@@ -17,15 +17,16 @@ This project is provided for education and planning support only. It is **not fi
 
 ## License
 
-RetireOps is currently licensed under the Business Source License 1.1. See [LICENSE](./LICENSE).
+RetireOps is licensed under the GNU Affero General Public License v3.0 only. See [LICENSE](./LICENSE).
 
-This means the source is available, but this release is **not open source yet**:
+Why AGPL-3.0-only:
 
-- Personal, educational, research, evaluation, development, testing, and other non-commercial use is allowed.
-- Commercial use, paid hosting, paid financial-planning services, and competing commercial offerings require a separate commercial license.
-- Each version converts to the GNU Affero General Public License v3.0 only on its Change Date. The AGPL text is included at [LICENSE-AGPL-3.0.txt](./LICENSE-AGPL-3.0.txt).
+- People can use, study, modify, self-host, and contribute to RetireOps as open source software.
+- Commercial use is allowed under the AGPL.
+- If someone modifies RetireOps and runs it as a hosted network service, they must make the corresponding source code for that modified version available to those users.
+- The AGPL text is included at [LICENSE-AGPL-3.0.txt](./LICENSE-AGPL-3.0.txt).
 
-This delayed-open-source model is intended to protect the project during active development while preserving a path to an open-source license later.
+The project maintainers may also offer hosted services, support, consulting, or separate commercial licensing for organizations that need different terms.
 
 ## Features
 
@@ -182,7 +183,7 @@ E2E tests use Playwright (`packages/web/e2e/`).
 
 ## Self-Hosting
 
-Individuals can self-host RetireOps for free for personal and other non-commercial use. Commercial deployments require a separate commercial license until the applicable Change Date. If you deploy it publicly for other users, review:
+Individuals and organizations can self-host RetireOps under AGPL-3.0-only. If you deploy it publicly for other users, review:
 
 - Security settings and secrets management
 - Backup and restore procedures (production compose includes a daily `pg_dump` service)
@@ -193,7 +194,7 @@ The production compose file (`docker-compose.yml`) includes Nginx with SSL, repl
 
 ## Hosted Service
 
-A hosted version of this codebase is planned, but third-party commercial hosting is not allowed under the current Business Source License terms unless you have a separate commercial license. After a version reaches its Change Date, that version is available under AGPL-3.0-only.
+A hosted version of this codebase can be offered under AGPL-3.0-only. The main condition: if you modify RetireOps and let users interact with it over a network, those users must be able to obtain the corresponding source for the modified version you are running.
 
 ## Current Limitations
 
