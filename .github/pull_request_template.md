@@ -62,6 +62,8 @@ Fixes #
 ## Checklist
 
 - [ ] My code follows the project's coding standards
+- [ ] I have read and agree to the RetireOps Contributor License Agreement in `CLA.md`
+- [ ] I have the right to submit this contribution under the CLA
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code where necessary
 - [ ] I have updated the documentation (if applicable)
