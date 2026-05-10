@@ -30,7 +30,7 @@ RetireOps is not novel in any individual calculation. Its value is in:
 | Scenario comparison            | Side-by-side, up to 3                     | Limited or premium   | Manual duplication                          |
 | Source of truth docs           | Every rule documented                     | Not available        | N/A                                         |
 | Test suite                     | Automated, referencing rule IDs           | Unknown              | None                                        |
-| Cost                           | Open source                               | $500-$5,000+/year    | Free but high effort                        |
+| Cost                           | Free for personal self-hosting            | $500-$5,000+/year    | Free but high effort                        |
 | Maintenance burden             | Community / automated                     | Vendor-dependent     | Entirely on user                            |
 
 ---

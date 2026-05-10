@@ -1,17 +1,73 @@
-SPDX-License-Identifier: AGPL-3.0-only
+RetireOps Source Available License
 
-RetireOps is licensed under the GNU Affero General Public License v3.0 only.
+Copyright (c) 2026 RetireOps
 
-You may obtain a copy of the license at:
-https://www.gnu.org/licenses/agpl-3.0.txt
+Permission is granted to individuals to use, copy, modify, and self-host this
+software for personal, non-commercial retirement planning, education, research,
+and evaluation, subject to the terms of this license.
 
-The full license text is included in this repository at:
-LICENSE-AGPL-3.0.txt
+The source code is made available so individuals can inspect the calculations,
+understand how the software works, and run it for their own personal use.
 
-Summary:
-- RetireOps is open source software.
-- Personal, educational, research, commercial, and self-hosted use are allowed under AGPL-3.0-only.
-- If you modify RetireOps and let users interact with it over a network, you must make the corresponding source code for that modified version available to those users under AGPL-3.0-only.
-- Commercial licenses, hosted services, support, consulting, and private licensing arrangements may be offered separately by the project maintainers.
+Commercial use is not permitted without a separate written commercial license
+from the project maintainers.
 
-This summary is informational only. The full AGPL-3.0-only license text governs.
+Commercial use includes, but is not limited to:
+
+- offering the software as a hosted service to third parties;
+- using the software to provide paid financial, tax, retirement, accounting,
+  advisory, consulting, employer-benefit, or planning services;
+- using the software with paying clients or customers;
+- white-labeling, rebranding, or reselling the software;
+- embedding the software into a paid product or service;
+- selling access to the software or derivative services;
+- using the software inside a business workflow to serve customers, clients,
+  employees, or members;
+- using the software for commercial lead generation.
+
+Personal Self-Hosting and Modification
+
+Individuals may modify the software for their own personal use. Distribution of
+modified versions is allowed only for non-commercial purposes and must preserve
+this license, copyright notices, disclaimers, and attribution to RetireOps.
+
+Trademark and Brand
+
+You may not use the RetireOps name, logo, domain, branding, or trademarks in a
+way that suggests your service, product, or deployment is official, endorsed by,
+or operated by the RetireOps maintainers unless you have written permission.
+
+Contributions
+
+Contributions to RetireOps are governed separately by the project's
+contribution documents (see CONTRIBUTING.md and CLA.md). Submitting a
+contribution does not grant you any additional rights to the software beyond
+those granted by this license.
+
+No Financial Advice
+
+RetireOps is provided for education and planning support only. It is not
+financial advice, tax advice, legal advice, investment advice, or retirement
+advice. Users are responsible for verifying results and consulting qualified
+professionals before making financial decisions.
+
+No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, ACCURACY, NON-INFRINGEMENT, OR AVAILABILITY.
+
+No Liability
+
+IN NO EVENT SHALL THE AUTHORS, COPYRIGHT HOLDERS, OR MAINTAINERS BE LIABLE FOR
+ANY CLAIM, DAMAGES, LOSSES, FINANCIAL DECISIONS, TAX CONSEQUENCES, OR OTHER
+LIABILITY ARISING FROM THE USE OF THE SOFTWARE OR RELIANCE ON ITS OUTPUTS.
+
+Commercial Licensing
+
+For commercial licensing, contact: info@retireops.ca.
+
+Status
+
+This license is not an open-source license as defined by the Open Source
+Initiative. RetireOps is source-available software.

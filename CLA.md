@@ -4,9 +4,10 @@ Thank you for contributing to RetireOps. This Contributor License Agreement
 ("Agreement") explains the rights you grant when you submit a contribution to
 the project.
 
-This Agreement is intended to keep RetireOps open source under AGPL-3.0-only
-while preserving the maintainers' ability to offer hosted services, commercial
-licenses, private deployments, support, and future licensing changes.
+This Agreement is intended to support RetireOps as source-available software
+under the RetireOps Source Available License while preserving the maintainers'
+ability to offer hosted services, commercial licenses, private deployments,
+support, and future licensing changes.
 
 ## Definitions
 
@@ -31,10 +32,11 @@ distribute your Contributions and derivative works.
 
 This grant includes the right to license your Contributions under:
 
-- AGPL-3.0-only;
-- later open source licenses chosen by the Maintainers;
-- commercial, proprietary, source-available, or private license terms chosen by
-  the Maintainers.
+- the RetireOps Source Available License;
+- commercial and proprietary license terms chosen by the Maintainers, including
+  for paid hosted-service deployments and dedicated commercial customers;
+- future RetireOps licensing terms chosen by the Maintainers, including
+  source-available, proprietary, or private license forms.
 
 ## Patent License
 

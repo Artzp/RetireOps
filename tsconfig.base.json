@@ -7,6 +7,13 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@retireops/shared": ["packages/shared/src/index.ts"],
+      "@retireops/shared/*": ["packages/shared/src/*"],
+      "@retireops/calculation-engine": ["packages/calculation-engine/src/index.ts"],
+      "@retireops/calculation-engine/*": ["packages/calculation-engine/src/*"]
+    },
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "declarationMap": true,

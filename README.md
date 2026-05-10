@@ -1,19 +1,37 @@
 # RetireOps
 
-[![Open beta](https://img.shields.io/badge/open%20beta-retireops.ca-f59e0b)](https://retireops.ca)
-[![License: AGPL v3.0](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![License: Source Available](https://img.shields.io/badge/license-source--available-orange)](./LICENSE)
 
-RetireOps is open source Canadian retirement planning software. It runs year-by-year cash flow projections across RRSP, RRIF, TFSA, LIRA, LIF, and non-registered accounts — accounting for federal and provincial taxes, CPP/OAS/GIS benefits, OAS clawback, and configurable withdrawal strategies.
-
-**Open beta:** <https://retireops.ca> — the hosted app is live and free to try while the project is in active development.
+RetireOps is source-available Canadian retirement planning software built for individuals who want to understand their own retirement numbers. It runs year-by-year cash flow projections across RRSP, RRIF, TFSA, LIRA, LIF, and non-registered accounts — accounting for federal and provincial taxes, CPP/OAS/GIS benefits, OAS clawback, and configurable withdrawal strategies.
 
 The goal: numbers Canadians can trust, without locking people into expensive software.
 
+## Why RetireOps Exists
+
+RetireOps started because I was trying to understand my own retirement.
+
+I wanted a tool where a regular Canadian could log in, enter their own numbers, and see a clear projection for retirement income, taxes, CPP, OAS, GIS, registered accounts, and long-term cash flow.
+
+Most serious tools I found were built for advisors, locked behind expensive workflows, or too generic to answer personal questions. Paying thousands of dollars before even understanding the basics did not feel right, and general YouTube videos could not answer my specific numbers.
+
+RetireOps is built for individuals first.
+
+The goal is to make retirement planning more transparent, understandable, and accessible for regular people.
+
+## Why RetireOps Is Source-Available
+
+RetireOps is source-available so people can inspect the code, understand the calculations, and self-host it for personal use.
+
+At the same time, the project is not intended to be taken by companies, advisors, or paid platforms, rebranded, placed behind a paywall, and sold back to the people it was built to help without supporting the project.
+
+Individuals should be able to use RetireOps for personal planning.
+
+Commercial use requires a separate license so the project can remain sustainable and continue improving.
+
 You can use it in two ways:
 
-- Try the open beta at <https://retireops.ca>.
-- Self-host it for free for your own personal use.
+- Try the public beta at https://retireops.ca.
+- Self-host it for your own personal retirement planning under the RetireOps Source Available License.
 
 ## Project Status
 
@@ -23,16 +41,27 @@ This project is provided for education and planning support only. It is **not fi
 
 ## License
 
-RetireOps is licensed under the GNU Affero General Public License v3.0 only. See [LICENSE](./LICENSE).
+RetireOps is licensed under the RetireOps Source Available License. See [LICENSE](./LICENSE).
 
-Why AGPL-3.0-only:
+Summary:
 
-- People can use, study, modify, self-host, and contribute to RetireOps as open source software.
-- Commercial use is allowed under the AGPL.
-- If someone modifies RetireOps and runs it as a hosted network service, they must make the corresponding source code for that modified version available to those users.
-- The AGPL text is included at [LICENSE-AGPL-3.0.txt](./LICENSE-AGPL-3.0.txt).
+- Individuals may use, copy, modify, and self-host RetireOps for personal retirement planning.
+- The source code is available for transparency, learning, review, and personal self-hosting.
+- Commercial use requires a separate commercial license.
+- Commercial use includes, but is not limited to:
+  - offering RetireOps as a hosted service to third parties
+  - using RetireOps with paying clients
+  - using RetireOps in an advisor, accounting, tax, employer-benefit, or financial-planning workflow
+  - white-labeling RetireOps
+  - embedding RetireOps into a paid product
+  - selling access to RetireOps or derivative services
+  - using RetireOps inside a business workflow to serve customers
 
-The project maintainers may also offer hosted services, support, consulting, or separate commercial licensing for organizations that need different terms.
+The goal is to keep RetireOps accessible for individuals while preventing the project from being taken, rebranded, and sold as a commercial product without permission.
+
+For commercial licensing, contact: info@retireops.ca.
+
+> This summary is informational only. The full license text in [LICENSE](./LICENSE) governs.
 
 ## Features
 
@@ -189,7 +218,11 @@ E2E tests use Playwright (`packages/web/e2e/`).
 
 ## Self-Hosting
 
-Individuals and organizations can self-host RetireOps under AGPL-3.0-only. If you deploy it publicly for other users, review:
+Individuals may self-host RetireOps for their own personal retirement planning under the RetireOps Source Available License.
+
+Organizations, advisors, consultants, financial planners, accounting firms, employers, or commercial platforms must obtain a commercial license before using RetireOps in a business or client-service context.
+
+If you self-host for personal use, review:
 
 - Security settings and secrets management
 - Backup and restore procedures (production compose includes a daily `pg_dump` service)
@@ -200,7 +233,9 @@ The production compose file (`docker-compose.yml`) includes Nginx with SSL, repl
 
 ## Hosted Service
 
-A hosted version of this codebase can be offered under AGPL-3.0-only. The main condition: if you modify RetireOps and let users interact with it over a network, those users must be able to obtain the corresponding source for the modified version you are running.
+The official hosted RetireOps service may be offered for free or with paid features to help keep the project sustainable.
+
+Running your own hosted RetireOps service for other users, clients, customers, employees, or the public requires a commercial license unless you have written permission from the maintainers.
 
 ## Current Limitations
 

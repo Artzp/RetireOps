@@ -2,17 +2,9 @@
   "name": "retireops",
   "version": "0.1.0",
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "description": "Canadian Retirement Planning Software",
-  "homepage": "https://retireops.ca",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Artzp/RetireOps.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Artzp/RetireOps/issues"
-  },
   "scripts": {
     "dev": "corepack pnpm -r --parallel run dev",
     "build": "corepack pnpm -r run build",
@@ -24,7 +16,7 @@
     "format:check": "corepack pnpm exec prettier --check .",
     "typecheck": "corepack pnpm -r run typecheck",
     "check": "corepack pnpm check:ci",
-    "check:ci": "corepack pnpm lint && corepack pnpm format:check && corepack pnpm typecheck && corepack pnpm build && corepack pnpm test",
+    "check:ci": "corepack pnpm lint && corepack pnpm format:check && corepack pnpm build && corepack pnpm typecheck && corepack pnpm test",
     "check:security": "corepack pnpm audit --audit-level=high",
     "clean": "corepack pnpm -r run clean && corepack pnpm exec rimraf node_modules",
     "prepare": "corepack pnpm exec husky"

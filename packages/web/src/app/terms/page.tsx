@@ -62,12 +62,13 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Open source code</h2>
+            <h2 className="text-lg font-semibold text-foreground">Source-available code</h2>
             <p>
-              The codebase is available under AGPL-3.0-only. Self-hosting, including commercial use,
-              is allowed under that license. If you modify RetireOps and let users interact with it
-              over a network, those users must be able to obtain the corresponding source for the
-              modified version you are running.
+              RetireOps is source-available software. Individuals may self-host RetireOps for
+              personal retirement planning under the RetireOps Source Available License. Commercial
+              use — including hosted services for third parties, advisor or client workflows,
+              employer or benefits use, paid products, white-labeling, or resale — requires a
+              separate commercial license.
             </p>
           </section>
         </div>

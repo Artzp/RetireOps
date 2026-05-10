@@ -1,6 +1,6 @@
 # Architectural and Functional Blueprint for RetireOps
 
-> **Status**: Target specification — this document defines the aspirational scope and engineering requirements for the RetireOps open-source Canadian retirement planning system.
+> **Status**: Target specification — this document defines the aspirational scope and engineering requirements for the RetireOps source-available Canadian retirement planning system.
 
 ---
 
@@ -8,13 +8,13 @@
 
 The transition from asset accumulation to decumulation represents the most mathematically complex phase of personal financial management. During the accumulation phase, the primary objectives revolve around maximizing savings rates, minimizing investment fees, and optimizing asset allocation to harness the power of long-term compound interest. Decumulation, however, introduces a highly constrained, multi-variate optimization problem characterized by interconnected variables and strict legislative boundaries. Determining how to convert all savings and pension sources into adequate and sustainable retirement income requires navigating a labyrinth of federal and provincial tax codes, mandatory withdrawal minimums, legislative maximums on locked-in accounts, and the complex integration of public pensions. Research indicates that while eighty percent of Canadians feel more confident in their retirement when they possess a formal plan, a mere fifteen percent of individuals aged forty and older report feeling very confident regarding how to strategically draw income from their accumulated savings.
 
-An open-source Canadian retirement planning tool, conceptualized herein as the "RetireOps" project, must operate far beyond the capabilities of basic linear projection calculators. Linear models, which assume static annual returns and constant inflation rates, fundamentally fail to capture the realities of market volatility and sequence of returns risk. A robust system must execute stochastic modeling, specifically Monte Carlo simulations, to calculate a definitive probability-of-success score. This core output metric dictates the likelihood that a retirement plan can sustain the user's desired lifestyle without depleting their capital prematurely. Furthermore, the system must perform granular year-by-year cash flow forecasting and tax optimization, algorithmically identifying the precise sequence of account withdrawals required to minimize lifetime tax liabilities and prevent the punitive clawback of government benefits such as the Old Age Security (OAS) and the Guaranteed Income Supplement (GIS).
+A source-available Canadian retirement planning tool, conceptualized herein as the "RetireOps" project, must operate far beyond the capabilities of basic linear projection calculators. Linear models, which assume static annual returns and constant inflation rates, fundamentally fail to capture the realities of market volatility and sequence of returns risk. A robust system must execute stochastic modeling, specifically Monte Carlo simulations, to calculate a definitive probability-of-success score. This core output metric dictates the likelihood that a retirement plan can sustain the user's desired lifestyle without depleting their capital prematurely. Furthermore, the system must perform granular year-by-year cash flow forecasting and tax optimization, algorithmically identifying the precise sequence of account withdrawals required to minimize lifetime tax liabilities and prevent the punitive clawback of government benefits such as the Old Age Security (OAS) and the Guaranteed Income Supplement (GIS).
 
 ---
 
 ## Software Architecture and Privacy-Preserving Infrastructure
 
-Financial planning software inherently processes highly sensitive data, including Personally Identifiable Information (PII), total net worth, granular asset inventories, and historical income data. To mitigate the cybersecurity risks and compliance burdens associated with centralizing this data on traditional cloud servers, the architecture for a modern open-source financial tool should heavily leverage privacy-preserving client-side computation.
+Financial planning software inherently processes highly sensitive data, including Personally Identifiable Information (PII), total net worth, granular asset inventories, and historical income data. To mitigate the cybersecurity risks and compliance burdens associated with centralizing this data on traditional cloud servers, the architecture for a modern source-available financial tool should heavily leverage privacy-preserving client-side computation.
 
 ### WebAssembly and Client-Side Execution
 
@@ -300,7 +300,7 @@ The software must transcend simply displaying this percentage; it must provide a
 
 ## Conclusion
 
-The engineering and development of an open-source Canadian retirement planning tool demands an unprecedented synthesis of deep financial domain expertise, complex actuarial mathematics, and robust, privacy-centric software architecture. To successfully and definitively answer the question of whether a user's retirement plan is sustainable, the software cannot rely on linear projections or simplistic financial heuristics.
+The engineering and development of a source-available Canadian retirement planning tool demands an unprecedented synthesis of deep financial domain expertise, complex actuarial mathematics, and robust, privacy-centric software architecture. To successfully and definitively answer the question of whether a user's retirement plan is sustainable, the software cannot rely on linear projections or simplistic financial heuristics.
 
 The engine must implement rigorous cash flow forecasting backed by massive stochastic Monte Carlo simulations to accurately model sequence of returns risk and the devastating potential of inflation volatility. It must feature a highly accurate, multi-jurisdictional tax engine capable of dynamically parsing progressive tax brackets, dividend gross-ups, and the critical thresholds associated with the OAS recovery tax and GIS clawbacks. Furthermore, the system must codify complex legislative account management rules, strictly enforcing RRIF minimums and provincial LIF maximums, while simultaneously algorithmically optimizing withdrawal sequencing to minimize lifetime taxation through strategies like the RRSP meltdown.
 

@@ -195,21 +195,24 @@ test(benefits): add CPP early/late adjustment test cases
 
 ## Contribution Licensing
 
-RetireOps is licensed under AGPL-3.0-only. By submitting a contribution, you agree
-that your contribution is licensed under AGPL-3.0-only.
+RetireOps is licensed under the RetireOps Source Available License. By submitting
+a contribution, you agree that your contribution may be used, modified,
+distributed, and commercially licensed by the project maintainers under the
+RetireOps Source Available License and any separate commercial licensing terms.
 
-The maintainers may offer hosted services, support, consulting, or separate
-commercial licensing for code they have the right to license separately.
-
-To keep that option available, all non-trivial outside contributions require
-acceptance of the RetireOps Contributor License Agreement in [CLA.md](./CLA.md).
-This includes code, tests, documentation, configuration, and design
-contributions submitted by pull request.
+To keep the project sustainable and to allow the maintainers to offer hosted
+services, support, and commercial licenses, all non-trivial outside contributions
+require acceptance of the RetireOps Contributor License Agreement in
+[CLA.md](./CLA.md). This includes code, tests, documentation, configuration, and
+design contributions submitted by pull request.
 
 By opening a pull request, you confirm that you have read and agree to the CLA.
 If you are contributing on behalf of an employer or another organization, you
 must have permission to submit the contribution under the CLA before opening the
 pull request.
+
+If you are not comfortable granting these rights, please do not submit a pull
+request.
 
 ## Coding Standards
 
