@@ -261,59 +261,6 @@ INSERT INTO benefit_rates (year, benefit_type, rates) VALUES
 }'::jsonb)
 ON CONFLICT (year, benefit_type) DO UPDATE SET rates = EXCLUDED.rates;
 
--- =============================================================================
--- Sample Test User (for development only)
--- =============================================================================
-INSERT INTO users (id, email, password_hash, name) VALUES
-(
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    'john.doe@example.com',
-    '$2a$12$D1LzCVgWNm8CjPAFKF57benAet6GvR2iNnergZYtN.YNsGmd/FaJK',
-    'John Doe'
-)
-ON CONFLICT (email) DO UPDATE SET
-    password_hash = EXCLUDED.password_hash,
-    name = EXCLUDED.name;
-
-INSERT INTO user_settings (
-    user_id,
-    province,
-    date_of_birth,
-    marital_status,
-    retirement_age,
-    life_expectancy,
-    theme,
-    notifications_enabled
-) VALUES (
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    'ON',
-    '1980-01-15',
-    'married',
-    65,
-    95,
-    'system',
-    TRUE
-)
-ON CONFLICT (user_id) DO UPDATE SET
-    province = EXCLUDED.province,
-    date_of_birth = EXCLUDED.date_of_birth,
-    marital_status = EXCLUDED.marital_status,
-    retirement_age = EXCLUDED.retirement_age,
-    life_expectancy = EXCLUDED.life_expectancy,
-    theme = EXCLUDED.theme,
-    notifications_enabled = EXCLUDED.notifications_enabled;
-
-INSERT INTO user_profiles (user_id, birthdate, province, marital_status, life_expectancy, planned_retirement_age) VALUES
-(
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    '1980-01-15',
-    'ON',
-    'married',
-    95,
-    65
-)
-ON CONFLICT DO NOTHING;
-
 -- Log completion
 DO $$
 BEGIN
