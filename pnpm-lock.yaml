@@ -82,8 +82,8 @@ importers:
         specifier: ^4.18.2
         version: 4.22.1
       express-rate-limit:
-        specifier: ^7.1.5
-        version: 7.5.1(express@4.22.1)
+        specifier: ^8.5.1
+        version: 8.5.1(express@4.22.1)
       google-auth-library:
         specifier: ^9.15.1
         version: 9.15.1
@@ -5318,13 +5318,14 @@ packages:
       strip-final-newline: 3.0.0
     dev: true
 
-  /express-rate-limit@7.5.1(express@4.22.1):
-    resolution: {integrity: sha512-7iN8iPMDzOMHPUYllBEsQdWVB6fPDMPqwjBaFrgr4Jgr/+okjvzAy+UHlYYL/Vs0OsOrMkwS6PJDkFlJwoxUnw==}
+  /express-rate-limit@8.5.1(express@4.22.1):
+    resolution: {integrity: sha512-5O6KYmyJEpuPJV5hNTXKbAHWRqrzyu+OI3vUnSd2kXFubIVpG7ezpgxQy76Zo5GQZtrQBg86hF+CM/NX+cioiQ==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: '>= 4.11'
     dependencies:
       express: 4.22.1
+      ip-address: 10.2.0
     dev: false
 
   /express@4.22.1:
@@ -5947,6 +5948,11 @@ packages:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
+    dev: false
+
+  /ip-address@10.2.0:
+    resolution: {integrity: sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA==}
+    engines: {node: '>= 12'}
     dev: false
 
   /ipaddr.js@1.9.1:
