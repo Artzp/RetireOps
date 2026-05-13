@@ -20,7 +20,7 @@
     "@retireops/calculation-engine": "workspace:*",
     "@retireops/shared": "workspace:*",
     "bullmq": "^5.1.0",
-    "ioredis": "^5.3.2",
+    "ioredis": "^5.10.1",
     "kysely": "^0.28.14",
     "pg": "^8.11.3",
     "winston": "^3.11.0",
