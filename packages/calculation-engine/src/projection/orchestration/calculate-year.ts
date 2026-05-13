@@ -359,7 +359,7 @@ function runOverrideAndDrawdownPipeline(c: YearCtx): void {
 
 function absorbPipelineResult(
   c: YearCtx,
-  state: ReturnType<typeof emptyPipelineState>,
+  state: PipelineState,
   result: ReturnType<typeof runWithdrawalPipeline>
 ): void {
   c.currentRRSP = state.currentRRSP;
@@ -382,8 +382,7 @@ function absorbPipelineResult(
   }
 }
 
-// Type-only helper to derive the pipeline state shape for absorbPipelineResult.
-function emptyPipelineState(): {
+type PipelineState = {
   currentRRSP: number;
   currentRRIF: number;
   currentTFSA: number;
@@ -397,23 +396,7 @@ function emptyPipelineState(): {
   nonRegRealizedGain: number;
   nonRegTaxableGain: number;
   annualCapGainsAccumulator: number;
-} {
-  return {
-    currentRRSP: 0,
-    currentRRIF: 0,
-    currentTFSA: 0,
-    currentNonReg: 0,
-    currentACB: 0,
-    currentLIF: 0,
-    rrspWithdrawal: 0,
-    additionalRRIFWithdrawal: 0,
-    tfsaWithdrawal: 0,
-    nonRegWithdrawal: 0,
-    nonRegRealizedGain: 0,
-    nonRegTaxableGain: 0,
-    annualCapGainsAccumulator: 0,
-  };
-}
+};
 
 function applyOASClawbackTrim(c: YearCtx): void {
   // TAX-04: trim discretionary withdrawals if taxable income exceeds threshold.

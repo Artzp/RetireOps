@@ -38,7 +38,7 @@ export async function testConnection(): Promise<boolean> {
     await db.selectFrom('users').select('id').limit(1).execute();
     logger.info('Database connection successful');
     return true;
-  } catch (error) {
+  } catch {
     // Table might not exist yet, try a simpler query
     try {
       await sql`SELECT 1`.execute(db);
