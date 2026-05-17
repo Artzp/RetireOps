@@ -17,3 +17,6 @@ export * from './validation/index.js';
 
 // Override resolution helpers
 export * from './overrides/index.js';
+
+// Report DTOs + adapter (v4.6 Phase 18)
+export * from './report/index.js';

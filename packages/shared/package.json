@@ -30,12 +30,28 @@
     "./overrides": {
       "types": "./dist/overrides/index.d.ts",
       "import": "./dist/overrides/index.js"
+    },
+    "./report": {
+      "types": "./dist/report/index.d.ts",
+      "import": "./dist/report/index.js"
+    },
+    "./benefits": {
+      "types": "./dist/benefits-parameters/index.d.ts",
+      "import": "./dist/benefits-parameters/index.js"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "import": "./dist/data/index.js"
+    },
+    "./withdrawal": {
+      "types": "./dist/withdrawal/index.d.ts",
+      "import": "./dist/withdrawal/index.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

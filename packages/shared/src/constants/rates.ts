@@ -83,6 +83,10 @@ export const OAS_RATES = {
 } as const;
 
 /**
+ * @deprecated(v4.8+) See `packages/shared/src/benefits-parameters/2026.ts#OAS_2026`
+ * for the citation-anchored 2026 values. This multi-year record is kept for
+ * legacy engine reads; engine migration to OAS_2026 is deferred to v4.8+.
+ *
  * OAS Clawback Thresholds
  * @see docs/source-of-truth/05-government-benefits.md - OAS Clawback
  * @see docs/source-of-truth/04-tax-engine.md - OAS Clawback
@@ -106,6 +110,10 @@ export const OAS_CLAWBACK_THRESHOLDS = {
 } as const;
 
 /**
+ * @deprecated(v4.8+) See `packages/shared/src/benefits-parameters/<year>.ts`
+ * for the v4.5 citation-anchored parameter convention. This 2024 record is
+ * kept for legacy engine reads; engine migration deferred to v4.8+.
+ *
  * Government Benefit Amounts (2024)
  * @see docs/source-of-truth/05-government-benefits.md
  */
@@ -131,6 +139,11 @@ export const BENEFIT_AMOUNTS_2024 = {
   },
 } as const;
 
+/**
+ * @deprecated(v4.8+) See `packages/shared/src/benefits-parameters/2026.ts#OAS_2026.q1`
+ * and `OAS_2026.q2` for the citation-anchored 2026 values. This multi-year
+ * record is kept for legacy engine reads; engine migration deferred to v4.8+.
+ */
 export const OAS_BENEFIT_AMOUNTS = {
   2024: BENEFIT_AMOUNTS_2024.oas,
   2025: {

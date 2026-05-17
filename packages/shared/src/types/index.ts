@@ -13,3 +13,4 @@ export * from './insights.js';
 export * from './solver.js';
 export * from './monte-carlo.js';
 export * from './historical-backtest.js';
+export * from './benefit-value-source.js';
