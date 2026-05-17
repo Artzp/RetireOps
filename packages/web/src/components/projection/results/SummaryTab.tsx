@@ -5,13 +5,13 @@
 
 import { useState } from 'react';
 import type {
-  DisplayMode,
   FundedStatus,
   LedgerWarning,
   MonteCarloJobResult,
   ProjectionYearRow,
   RemediationPlan,
-} from '@retireops/shared';
+} from '@retireops/shared/types';
+import type { DisplayMode } from '@retireops/shared/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -497,7 +497,7 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {isCouple && viewMode === 'household'
                 ? 'Household Avg. Income'
-                : 'Avg. Retirement Income'}
+                : 'Avg. After-Tax Spending'}
             </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -676,7 +676,7 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Avg. Retirement Income</span>
+                    <span className="text-muted-foreground">Avg. After-Tax Spending</span>
                     <span className="font-medium">
                       {formatCurrency(coupleSummary.primarySummary.averageRetirementIncome)}
                     </span>
@@ -702,7 +702,7 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Avg. Retirement Income</span>
+                    <span className="text-muted-foreground">Avg. After-Tax Spending</span>
                     <span className="font-medium">
                       {formatCurrency(coupleSummary.spouseSummary.averageRetirementIncome)}
                     </span>

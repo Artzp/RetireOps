@@ -58,7 +58,13 @@ export default function PrivacyPage() {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-foreground">Your choices</h2>
             <p>
-              You can choose not to enter sensitive financial information into the hosted version.
+              RetireOps stores the balances and income figures you enter. If you&apos;d rather not
+              have exact numbers stored, use rounded values &mdash; projections still work fine. We
+              never ask for your SIN, bank account numbers, or banking credentials, and you should
+              never enter them. For actual retirement decisions, use official sources (CRA, Service
+              Canada), your financial institution, or a licensed planner.
+            </p>
+            <p>
               If you prefer full control, you can self-host the source-available version under the
               RetireOps Source Available License instead.
             </p>

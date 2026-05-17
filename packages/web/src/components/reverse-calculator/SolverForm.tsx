@@ -11,8 +11,8 @@ import {
   SustainableSpendingInputSchema,
   EarliestRetirementAgeInputSchema,
   RequiredTotalSavingsInputSchema,
-} from '@retireops/shared';
-import type { SolverMode, SolverInput } from '@retireops/shared';
+} from '@retireops/shared/validation';
+import type { SolverInput, SolverMode } from '@retireops/shared/types';
 import type { SolverPrefillData } from '@/lib/api/solver';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -23,7 +23,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Loader2, Pencil } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { MoneyCell } from './MoneyCell';
@@ -47,10 +48,19 @@ import {
   runProfileScenario,
   updateDecisions,
 } from '@/lib/api/profile-scenarios';
-import type { ProjectionYearRow, ScenarioDecisions } from '@retireops/shared';
-import type { ProvenanceCellMetadata } from '@retireops/shared';
-import { CPP_RATES, OAS_RATES } from '@retireops/shared';
+import type {
+  ProjectionYearRow,
+  ProvenanceCellMetadata,
+  ScenarioDecisions,
+} from '@retireops/shared/types';
+import { CPP_RATES, OAS_RATES } from '@retireops/shared/constants';
 import type { ProfileScenarioDetail } from '@/types/profile-scenario';
+// Phase 30 Plan 02 — explainability popover + override summary banner.
+// `explainYearWithdrawals` is the inline web mirror of the shared adapter
+// (packages/web/src/lib/explain-adapter.ts — byte-equivalent copy).
+import { explainYearWithdrawals, type WithdrawalReason } from '@/lib/explain-adapter';
+import WithdrawalReasonPopover from '@/components/projection/withdrawal/WithdrawalReasonPopover';
+import OverrideSummary from '@/components/projection/withdrawal/OverrideSummary';
 
 interface YearByYearTabProps {
   data: {
@@ -548,6 +558,49 @@ export function YearByYearTab({
   // Couple detection — if any row has a defined spouseAge it is a couple projection
   const isCouple = rows.some((r) => r.spouseAge !== undefined);
 
+  // -------------------------------------------------------------------------
+  // PHASE 30 Plan 02 — Explainability reasons map.
+  //
+  // Compute one WithdrawalReason[] per row via the inline `explainYearWithdrawals`
+  // adapter, then flatten to a Map keyed `${year}::${account}` so each
+  // EditableCell can look up its slice in O(1). Recomputes only when the
+  // projection rows or the editor's withdrawalOverrides change.
+  // -------------------------------------------------------------------------
+  const reasonsByCell = useMemo<Map<string, WithdrawalReason[]>>(() => {
+    const map = new Map<string, WithdrawalReason[]>();
+    const overrides = editor.decisions.withdrawalOverrides;
+    for (const row of rows) {
+      const reasons = explainYearWithdrawals({ row, overrides });
+      for (const r of reasons) {
+        map.set(`${String(row.year)}::${r.account}`, [r]);
+      }
+    }
+    return map;
+  }, [rows, editor.decisions.withdrawalOverrides]);
+
+  /**
+   * Map an EditableCell `field` token to the `WithdrawalReason['account']`
+   * discriminator used by the adapter. Returns undefined for `'spending'`
+   * (no withdrawal-reason surface) and for `'rrsp'` (today's row contract
+   * does not surface a standalone RRSP withdrawal cell — RRSP merges into
+   * the RRIF cell via `isMergedRrifCell`, and the adapter's RRSP branch is
+   * reserved for future row-shape extensions).
+   */
+  const fieldToAccount = (field: string): WithdrawalReason['account'] | undefined => {
+    switch (field) {
+      case 'rrif':
+        return 'rrif';
+      case 'tfsa':
+        return 'tfsa';
+      case 'nonreg':
+        return 'nonReg';
+      case 'lif':
+        return 'lif';
+      default:
+        return undefined;
+    }
+  };
+
   const timingDefaults = useMemo<TimingDraft>(
     () => ({
       cppStartAge:
@@ -602,6 +655,7 @@ export function YearByYearTab({
   const [timingDraft, setTimingDraft] = useState<TimingDraft>(timingDefaults);
   const [isTimingSaving, setIsTimingSaving] = useState(false);
   const [isComparingTiming, setIsComparingTiming] = useState(false);
+  const [isTimingPanelOpen, setIsTimingPanelOpen] = useState(false);
   const [timingComparisons, setTimingComparisons] = useState<TimingComparisonRow[]>([]);
   const [isAssetEditorOpen, setIsAssetEditorOpen] = useState(false);
   const [isAssetSaving, setIsAssetSaving] = useState(false);
@@ -928,7 +982,20 @@ export function YearByYearTab({
     const hasActiveOverride = activeOverride !== undefined;
     const isClamped = clampInfo !== undefined;
 
-    const cellContent = (
+    // Phase 30 Plan 02 — explainability reasons for THIS cell (non-spending,
+    // non-zero withdrawal fields only). Falls back to an empty list which the
+    // WithdrawalReasonPopover renders as null.
+    const account = fieldToAccount(field);
+    const cellReasons: WithdrawalReason[] =
+      account !== undefined && value > 0
+        ? (reasonsByCell.get(`${String(year)}::${account}`) ?? [])
+        : [];
+    const reasonRow = rows.find((r) => r.year === year);
+
+    // D5 fix: split cellContent into cellValue (edit trigger contents) and
+    // reasonTrigger (sibling), so the popover <button> is never nested inside
+    // the role="button" editable trigger — invalid nested-interactive HTML.
+    const cellValue = (
       <span className="inline-flex items-center justify-end gap-0.5">
         <MoneyCell value={value} />
         {hasActiveOverride && !isClamped && <OverrideDot />}
@@ -939,74 +1006,98 @@ export function YearByYearTab({
       </span>
     );
 
+    const reasonTrigger =
+      cellReasons.length > 0 && reasonRow !== undefined ? (
+        <WithdrawalReasonPopover
+          reasons={cellReasons}
+          row={reasonRow}
+          triggerLabel={`${label} ${year}`}
+        >
+          ?
+        </WithdrawalReasonPopover>
+      ) : null;
+
     if (!isEditable) {
       // No override editor props — render read-only.
-      return <>{cellContent}</>;
+      return (
+        <span className="inline-flex items-center justify-end gap-0.5">
+          {cellValue}
+          {reasonTrigger}
+        </span>
+      );
     }
 
     const editAriaLabel = `Edit ${label} ${year} - current value ${formatCurrency(value)}`;
 
     return (
-      <>
-        {/* Desktop (lg+): interactive trigger — hidden below lg via CSS on the parent td */}
-        {/* Mobile (<lg): plain text, no interaction (D-31) */}
-        <span className="lg:hidden inline-flex items-center">{cellContent}</span>
+      <span className="inline-flex items-center justify-end gap-0.5 w-full">
+        {/* Mobile (<lg): plain text only, no interaction (D-31). Reason trigger
+            is desktop-only to avoid duplicate DOM elements that break .first()
+            focus in Playwright (hidden elements cannot receive focus). */}
+        <span className="lg:hidden inline-flex items-center gap-0.5">{cellValue}</span>
 
-        {/* Popover — Radix anchors to the trigger via PopoverTrigger asChild */}
-        <OverrideCellPopover
-          year={year}
-          field={field}
-          label={`${label} — ${year}`}
-          currentDisplayValue={value}
-          activeOverride={activeOverride}
-          clampInfo={clampInfo}
-          open={isOpen}
-          onOpenChange={(open) => {
-            if (!open) editor.closePopover();
-            else editor.openPopover(year, field, owner);
-          }}
-          onSave={async (payload) => {
-            await editor.savePopover({
-              primary: {
-                amount: payload.primary.amount,
-                applyForward: payload.primary.applyForward,
-              },
-              secondary: payload.secondary
-                ? { amount: payload.secondary.amount, applyForward: payload.secondary.applyForward }
-                : undefined,
-            });
-          }}
-          onCancel={() => editor.closePopover()}
-          secondaryField={secondaryField}
-          provenance={provenance}
-          mode="editable"
-          // PHASE 3 (D-69, D-73): wire Remove button to hook's removeOverride()
-          onRemoveOverride={
-            activeOverride !== undefined
-              ? async () => editor.removeOverride(field, year, owner)
-              : undefined
-          }
-          isRemoving={editor.isRemoving}
-        >
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label={editAriaLabel}
-            aria-haspopup="dialog"
-            aria-expanded={isOpen}
-            className="hidden min-h-7 w-full cursor-pointer items-center justify-end rounded-sm px-1 hover:bg-ds-primary/10 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ds-primary focus-visible:ring-offset-1 lg:inline-flex"
-            onClick={() => editor.openPopover(year, field, owner)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                editor.openPopover(year, field, owner);
-              }
+        {/* Desktop (lg+): editable trigger + sibling reason trigger */}
+        <span className="hidden lg:inline-flex items-center justify-end gap-0.5 w-full">
+          {/* Popover — Radix anchors to the trigger via PopoverTrigger asChild */}
+          <OverrideCellPopover
+            year={year}
+            field={field}
+            label={`${label} — ${year}`}
+            currentDisplayValue={value}
+            activeOverride={activeOverride}
+            clampInfo={clampInfo}
+            open={isOpen}
+            onOpenChange={(open) => {
+              if (!open) editor.closePopover();
+              else editor.openPopover(year, field, owner);
             }}
+            onSave={async (payload) => {
+              await editor.savePopover({
+                primary: {
+                  amount: payload.primary.amount,
+                  applyForward: payload.primary.applyForward,
+                },
+                secondary: payload.secondary
+                  ? {
+                      amount: payload.secondary.amount,
+                      applyForward: payload.secondary.applyForward,
+                    }
+                  : undefined,
+              });
+            }}
+            onCancel={() => editor.closePopover()}
+            secondaryField={secondaryField}
+            provenance={provenance}
+            mode="editable"
+            // PHASE 3 (D-69, D-73): wire Remove button to hook's removeOverride()
+            onRemoveOverride={
+              activeOverride !== undefined
+                ? async () => editor.removeOverride(field, year, owner)
+                : undefined
+            }
+            isRemoving={editor.isRemoving}
           >
-            {cellContent}
-          </div>
-        </OverrideCellPopover>
-      </>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={editAriaLabel}
+              aria-haspopup="dialog"
+              aria-expanded={isOpen}
+              className="min-h-7 cursor-pointer inline-flex items-center justify-end rounded-sm px-1 hover:bg-ds-primary/10 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ds-primary focus-visible:ring-offset-1"
+              onClick={() => editor.openPopover(year, field, owner)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  editor.openPopover(year, field, owner);
+                }
+              }}
+            >
+              {cellValue}
+            </div>
+          </OverrideCellPopover>
+          {reasonTrigger}
+        </span>
+      </span>
     );
   }
 
@@ -1373,12 +1464,33 @@ export function YearByYearTab({
           ) : (
             <>
               {isEditable && (
-                <div className="mb-4 rounded-md border border-ds-outline-variant bg-ds-surface-raised/50 p-3">
-                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                    <div>
+                <Collapsible
+                  open={isTimingPanelOpen}
+                  onOpenChange={setIsTimingPanelOpen}
+                  className="mb-4 rounded-md border border-ds-outline-variant bg-ds-surface-raised/50"
+                >
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-3 text-left">
+                    <div className="min-w-0">
                       <h4 className="text-sm font-medium text-ds-on-background">
                         Government pension timing
                       </h4>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        CPP @ {timingDraft.cppStartAge} · OAS @ {timingDraft.oasStartAge} · Life{' '}
+                        {timingDraft.lifeExpectancy}
+                        {isCouple && timingDraft.spouseCppStartAge !== undefined && (
+                          <> · Spouse CPP @ {timingDraft.spouseCppStartAge}</>
+                        )}
+                      </p>
+                    </div>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform${
+                        isTimingPanelOpen ? ' rotate-180' : ''
+                      }`}
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="flex flex-col gap-3 px-3 pb-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Explore CPP, OAS, and planning life expectancy, then recompute this
                         scenario.
@@ -1671,8 +1783,8 @@ export function YearByYearTab({
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
               {isEditable && (
                 <Dialog open={isAssetEditorOpen} onOpenChange={setIsAssetEditorOpen}>
@@ -1829,6 +1941,10 @@ export function YearByYearTab({
                   </DialogContent>
                 </Dialog>
               )}
+              {/* Phase 30 Plan 02 — active withdrawal overrides banner.
+                  Returns null when there are no overrides, so this slot is a no-op
+                  for projection runs without an override decision yet. */}
+              <OverrideSummary overrides={editor.decisions.withdrawalOverrides} />
               <div className="rounded-md border border-ds-outline-variant bg-ds-surface shadow-inner">
                 <div className="overflow-x-auto">
                   <div className="max-h-[68vh] overflow-y-auto">

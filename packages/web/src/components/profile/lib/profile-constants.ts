@@ -74,6 +74,12 @@ export const ALL_STEPS: StepConfig[] = [
     description: 'Government benefits and pension plans',
   },
   {
+    id: 'government-pensions',
+    slug: 'government_pensions',
+    label: 'Government Pensions',
+    description: 'CPP/QPP, OAS, GIS, and provincial supplements',
+  },
+  {
     id: 'property-goals',
     slug: 'property_goals',
     label: 'Property & Goals',
@@ -246,6 +252,67 @@ export const EMPTY_PROFILE_DEFAULTS = {
     cpp_spouse: { estimatedAnnual: '', survivorsPensionEnabled: false, survivorsPensionAmount: '' },
     oas_spouse: { estimatedAnnual: '', residencyYears: '40' },
     pensions: [] as PensionCard[],
+  },
+  government_pensions: {
+    kind: 'single' as 'single' | 'couple',
+    cpp_primary: {
+      plannedStartAge: '' as string,
+      manualOverrideAnnual: '' as string,
+      hasServiceCanadaStatement: false as boolean,
+      estimatedAnnualAt65: '' as string,
+      yearsContributed: '' as string,
+      earningsBucket: '' as '' | 'BELOW_AVG' | 'AVG_OR_ABOVE' | 'AT_MAX',
+      value_source: undefined as
+        | {
+            mode: 'user_entered' | 'estimated' | 'defaulted';
+            confidence: 'high' | 'medium' | 'low';
+            citation: string;
+            note?: string;
+          }
+        | undefined,
+    },
+    oas_primary: {
+      plannedStartAge: '' as string,
+      manualOverrideAnnual: '' as string,
+      residenceYearsAfter18: '' as string,
+      value_source: undefined as
+        | {
+            mode: 'user_entered' | 'estimated' | 'defaulted';
+            confidence: 'high' | 'medium' | 'low';
+            citation: string;
+            note?: string;
+          }
+        | undefined,
+    },
+    cpp_spouse: {
+      plannedStartAge: '' as string,
+      manualOverrideAnnual: '' as string,
+      hasServiceCanadaStatement: false as boolean,
+      estimatedAnnualAt65: '' as string,
+      yearsContributed: '' as string,
+      earningsBucket: '' as '' | 'BELOW_AVG' | 'AVG_OR_ABOVE' | 'AT_MAX',
+      value_source: undefined as
+        | {
+            mode: 'user_entered' | 'estimated' | 'defaulted';
+            confidence: 'high' | 'medium' | 'low';
+            citation: string;
+            note?: string;
+          }
+        | undefined,
+    },
+    oas_spouse: {
+      plannedStartAge: '' as string,
+      manualOverrideAnnual: '' as string,
+      residenceYearsAfter18: '' as string,
+      value_source: undefined as
+        | {
+            mode: 'user_entered' | 'estimated' | 'defaulted';
+            confidence: 'high' | 'medium' | 'low';
+            citation: string;
+            note?: string;
+          }
+        | undefined,
+    },
   },
   property_goals: {
     properties: [] as PropertyCard[],

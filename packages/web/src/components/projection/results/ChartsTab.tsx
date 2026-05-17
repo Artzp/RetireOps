@@ -209,10 +209,10 @@ export function ChartsTab({ data, displayMode = 'nominal' }: ChartsTabProps) {
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Retirement Income Breakdown */}
+        {/* After-Tax Spending Sources Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Retirement Income Sources</CardTitle>
+            <CardTitle>After-Tax Spending Sources</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">

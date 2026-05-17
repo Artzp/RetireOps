@@ -24,7 +24,7 @@ import { getProfileScenario, runProfileScenario } from '@/lib/api/profile-scenar
 import { useProjectionDisplayMode } from '@/hooks/useProjectionDisplayMode';
 import { applyDisplayMode } from '@/lib/projection/display-mode';
 import type { ProfileScenarioDetail } from '@/types/profile-scenario';
-import type { MonteCarloJobResult, ProjectionYearRow } from '@retireops/shared';
+import type { MonteCarloJobResult, ProjectionYearRow } from '@retireops/shared/types';
 import { readMonteCarloResult, writeMonteCarloResult } from '@/lib/monte-carlo-cache';
 
 const DEFAULT_INFLATION_RATE = 0.025;
@@ -429,7 +429,7 @@ export default function ScenarioResultsPage() {
               }
               terminalTaxEvents={
                 (scenario.result_data as any)?.terminalTaxEvents as
-                  | import('@retireops/shared').TerminalReturnResult[]
+                  | import('@retireops/shared/types').TerminalReturnResult[]
                   | undefined
               }
             />

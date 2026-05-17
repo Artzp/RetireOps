@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ChevronDown, ChevronUp, X, Play, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, X, Play, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +22,23 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { DefaultBadge } from '@/components/profile/DefaultBadge';
+import { WithdrawalPlanSection } from '@/components/projection/withdrawal/WithdrawalPlanSection';
+import { PresetSelectorCard } from '@/components/projection/withdrawal/PresetSelectorCard';
+import { PresetSwitchConfirmDialog } from '@/components/projection/withdrawal/PresetSwitchConfirmDialog';
+import { ImpactPreview } from '@/components/projection/withdrawal/ImpactPreview';
+import { ComparisonModeModal } from '@/components/projection/withdrawal/ComparisonModeModal';
+import { deriveAccountCardMetadata } from '@/components/projection/withdrawal/account-metadata';
+import {
+  applyPresetToTaxState,
+  drawdownOrderToTypeOrder,
+  presetSwitchNeedsConfirm,
+} from '@/components/projection/withdrawal/preset-apply';
+import {
+  WEB_WITHDRAWAL_PRESETS,
+  resolvePresetIdFromOrder,
+  type WithdrawalPresetId,
+} from '@/lib/withdrawal-presets';
+import { buildAllConstraintWarnings, deriveConstraintInput } from '@/lib/constraint-warnings';
 import {
   getProfileScenario,
   updateDecisions,
@@ -240,6 +257,16 @@ export default function DecisionsEditorPage() {
   const [savingsState, setSavingsState] = useState<SavingsState>(defaultSavingsState());
   const [spendingState, setSpendingState] = useState<SpendingState>(defaultSpendingState());
 
+  // ── Preset selector state (Phase 28 — WD-UI-05)
+  const [pendingPresetId, setPendingPresetId] = useState<WithdrawalPresetId | null>(null);
+
+  // ── Comparison-mode modal (Phase 32 — CMP-01..CMP-05)
+  // baseSnapshotRef is captured (deep-cloned) when the user clicks "Compare
+  // Strategies" so the modal renders against a frozen view of taxState. Live
+  // edits beneath the modal cannot churn the comparison (Pitfall 5).
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const baseSnapshotRef = useRef<Record<string, unknown> | null>(null);
+
   // ── Dirty flags
   const [timingDirty, setTimingDirty] = useState(false);
   const [taxDirty, setTaxDirty] = useState(false);
@@ -255,6 +282,26 @@ export default function DecisionsEditorPage() {
   const [taxSaveError, setTaxSaveError] = useState(false);
   const [savingsSaveError, setSavingsSaveError] = useState(false);
   const [spendingSaveError, setSpendingSaveError] = useState(false);
+
+  // Phase 34-04 — derive live constraint warnings. Placed here (before early returns)
+  // to satisfy Rules of Hooks. Uses state directly; returns [] when no projection rows
+  // exist (scenario not yet run) so the banner stays null (E1 invariant preserved).
+  const warnings = useMemo(() => {
+    const rows =
+      (scenario?.result_data?.['projectionRows'] as
+        | Array<{ year: number; age: number; tfsaWithdrawal?: number; totalGrossIncome?: number }>
+        | undefined) ?? [];
+    const typeOrder = drawdownOrderToTypeOrder(taxState.drawdownOrder, accountCards);
+    const input = deriveConstraintInput({
+      projectionRows: rows,
+      accountCards,
+      drawdownTypeOrder: typeOrder,
+    });
+    return input === null ? [] : buildAllConstraintWarnings(input);
+    // deps: scenario (result_data source), taxState.drawdownOrder (drawdown order
+    // for nonReg detection), accountCards (id→type map for drawdownOrderToTypeOrder).
+    // Full taxState not needed — only drawdownOrder feeds deriveConstraintInput.
+  }, [scenario, taxState.drawdownOrder, accountCards]);
 
   // ── Load data
   const loadData = useCallback(async () => {
@@ -548,6 +595,43 @@ export default function DecisionsEditorPage() {
       endYear: o.endYear,
     }));
   const roomViolations: RoomViolation[] = findContributionOverages(rrspOverrides, projectionRows);
+
+  // ── Phase 28: derive per-card metadata + the currently-active preset id.
+  const accountMetadata = deriveAccountCardMetadata(accountCards, stepData, projectionRows);
+  const drawdownTypeOrder = drawdownOrderToTypeOrder(taxState.drawdownOrder, accountCards);
+  const scenarioStrategyId = (scenario?.decisions as { strategyId?: string } | undefined)
+    ?.strategyId;
+  const currentPresetId: WithdrawalPresetId = resolvePresetIdFromOrder({
+    drawdownTypeOrder,
+    strategyId: scenarioStrategyId,
+    meltdownEnabled: taxState.rrspMeltdown.enabled,
+    clawbackEnabled: taxState.oasClawbackAvoidance.enabled,
+  });
+
+  const pendingPresetName =
+    pendingPresetId !== null
+      ? (WEB_WITHDRAWAL_PRESETS.find((p) => p.id === pendingPresetId)?.name ?? '')
+      : '';
+
+  const handlePresetSelect = (id: WithdrawalPresetId) => {
+    if (id === currentPresetId) return; // no-op on already-active
+    if (id === 'custom') return; // 'custom' is a status indicator, not selectable
+    if (presetSwitchNeedsConfirm(taxState, id, accountCards, currentPresetId)) {
+      setPendingPresetId(id);
+      return;
+    }
+    // No confirm needed — apply immediately.
+    setTaxState((prev) => applyPresetToTaxState(prev, id, accountCards));
+    setTaxDirty(true);
+  };
+
+  const handlePresetConfirm = () => {
+    if (pendingPresetId === null) return;
+    const id = pendingPresetId;
+    setTaxState((prev) => applyPresetToTaxState(prev, id, accountCards));
+    setTaxDirty(true);
+    setPendingPresetId(null);
+  };
 
   const cppAdj = cppAdjustment(timingState.cppStartAge);
   const spouseCppAdj = cppAdjustment(timingState.spouseCppStartAge);
@@ -1025,63 +1109,85 @@ export default function DecisionsEditorPage() {
           />
           <CollapsibleContent>
             <CardContent className="p-6 pt-0 space-y-6">
-              {/* Drawdown Account Priority */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-ds-on-surface">
-                    Drawdown Account Priority
-                  </span>
-                  {accountCards.length > 0 && (
-                    <DefaultBadge
-                      value={accountCards
-                        .map((a) => a.type)
-                        .slice(0, 3)
-                        .join(' → ')}
-                    />
-                  )}
-                </div>
-                {accountCards.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No accounts configured in your profile.
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {taxState.drawdownOrder.map((accountId, i) => {
-                      const name = accountMap.get(accountId) ?? accountId;
-                      const type = typeMap.get(accountId) ?? '';
-                      return (
-                        <div
-                          key={accountId}
-                          className="flex items-center justify-between py-2 min-h-[44px]"
-                        >
-                          <span className="text-sm">
-                            {name} — {type}
-                          </span>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => moveDrawdownUp(i)}
-                              disabled={i === 0}
-                              aria-label={`Move ${name} up`}
-                            >
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => moveDrawdownDown(i)}
-                              disabled={i === taxState.drawdownOrder.length - 1}
-                              aria-label={`Move ${name} down`}
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+              {/* Withdrawal Plan — preset selector + reorderable account cards (Phase 28) */}
+              <div className="space-y-6" data-section="withdrawal-plan-container">
+                <PresetSelectorCard
+                  currentPresetId={currentPresetId}
+                  onSelect={handlePresetSelect}
+                  scenarioId={id}
+                />
+                <WithdrawalPlanSection
+                  drawdownOrder={taxState.drawdownOrder}
+                  accountCards={accountCards}
+                  metadataByAccountId={accountMetadata}
+                  onMoveUp={moveDrawdownUp}
+                  onMoveDown={moveDrawdownDown}
+                  warnings={warnings}
+                />
+                {/* Phase 31-01 — live what-if outcomes for the working taxState.
+                    Wired below WithdrawalPlanSection per 31-CONTEXT.md scope. */}
+                <ImpactPreview
+                  scenarioId={id}
+                  currentPatch={{
+                    drawdownOrder: taxState.drawdownOrder,
+                    rrspMeltdown: {
+                      enabled: taxState.rrspMeltdown.enabled,
+                      annualAmount: taxState.rrspMeltdown.annualAmount,
+                      startYear: taxState.rrspMeltdown.startYear,
+                      endYear: taxState.rrspMeltdown.endYear,
+                    },
+                    incomeSplitting: {
+                      enabled: taxState.incomeSplitting.enabled,
+                      splitPercent: taxState.incomeSplitting.splitPercent / 100,
+                    },
+                    oasClawbackAvoidance: {
+                      enabled: taxState.oasClawbackAvoidance.enabled,
+                      incomeThreshold: taxState.oasClawbackAvoidance.incomeThreshold,
+                    },
+                    bracketFill: {
+                      enabled: taxState.bracketFill.enabled,
+                      ...(taxState.bracketFill.bracketTarget !== 'current' && {
+                        bracketTarget: taxState.bracketFill.bracketTarget,
+                      }),
+                      ...(taxState.bracketFill.annualCap !== undefined && {
+                        annualCap: taxState.bracketFill.annualCap,
+                      }),
+                    },
+                  }}
+                />
+                {/* Phase 32 — comparison-mode entry point. Snapshots taxState
+                    via useRef BEFORE opening so the modal is decoupled from
+                    live edits (Pitfall 5). Modal is rendered out-of-flow at
+                    the page root to avoid being nested inside the collapsible
+                    section's overflow-clipped area. */}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-testid="open-comparison-modal"
+                    onClick={() => {
+                      // C1 fix (Phase 34.1-02 branch a.i): enrich the snapshot
+                      // with the type-token drawdownOrder + scenario strategyId
+                      // so ComparisonModeModal.resolveSnapshotPresetId resolves
+                      // to the same currentPresetId as the page (line 600-609).
+                      // taxState carries account IDs, not engine type tokens,
+                      // and does NOT carry strategyId.
+                      const typeTokenOrder = drawdownOrderToTypeOrder(
+                        taxState.drawdownOrder,
+                        accountCards
                       );
-                    })}
-                  </div>
-                )}
+                      baseSnapshotRef.current = {
+                        ...(JSON.parse(JSON.stringify(taxState)) as Record<string, unknown>),
+                        drawdownOrder: typeTokenOrder,
+                        strategyId: scenarioStrategyId,
+                      };
+                      setComparisonOpen(true);
+                    }}
+                  >
+                    Compare Strategies
+                  </Button>
+                </div>
               </div>
 
               <Separator />
@@ -1802,6 +1908,29 @@ export default function DecisionsEditorPage() {
           </CollapsibleContent>
         </Collapsible>
       </Card>
+
+      <PresetSwitchConfirmDialog
+        open={pendingPresetId !== null}
+        presetName={pendingPresetName}
+        onOpenChange={(open) => {
+          if (!open) setPendingPresetId(null);
+        }}
+        onConfirm={handlePresetConfirm}
+      />
+
+      {/* Phase 32 — comparison-mode modal. baseDecisionsSnapshot reads from
+          the ref (set on button click). The ref is stable across rerenders so
+          the modal's effect doesn't churn on live edits beneath it. Falls
+          back to the live taxState only when the modal has never been opened
+          — in that case the modal is closed and the prop is never read. */}
+      <ComparisonModeModal
+        open={comparisonOpen}
+        onOpenChange={setComparisonOpen}
+        scenarioId={id}
+        baseDecisionsSnapshot={
+          baseSnapshotRef.current ?? (taxState as unknown as Record<string, unknown>)
+        }
+      />
     </div>
   );
 }

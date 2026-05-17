@@ -34,6 +34,7 @@ import { SpendingStep } from '@/components/profile/steps/SpendingStep';
 import { AccountsStep } from '@/components/profile/steps/AccountsStep';
 import { DebtsStep } from '@/components/profile/steps/DebtsStep';
 import { BenefitsStep } from '@/components/profile/steps/BenefitsStep';
+import { GovernmentPensionsStep } from '@/components/profile/steps/GovernmentPensionsStep';
 import { PropertyGoalsStep } from '@/components/profile/steps/PropertyGoalsStep';
 import {
   fillBlankAssumption,
@@ -131,6 +132,16 @@ export function mapProfileToForm(
         }
       : EMPTY_PROFILE_DEFAULTS.benefits;
 
+  const governmentPensions =
+    typeof stepData['government_pensions'] === 'object' && stepData['government_pensions'] !== null
+      ? {
+          ...EMPTY_PROFILE_DEFAULTS.government_pensions,
+          ...(stepData['government_pensions'] as Partial<
+            typeof EMPTY_PROFILE_DEFAULTS.government_pensions
+          >),
+        }
+      : EMPTY_PROFILE_DEFAULTS.government_pensions;
+
   return {
     about_you: {
       ...EMPTY_PROFILE_DEFAULTS.about_you,
@@ -158,6 +169,7 @@ export function mapProfileToForm(
       : [],
     debts: Array.isArray(stepData['debts']) ? (stepData['debts'] as DebtCard[]) : [],
     benefits: fillPensionAssumptionDefaults(benefits, defaults),
+    government_pensions: governmentPensions,
     property_goals:
       typeof stepData['property_goals'] === 'object' && stepData['property_goals'] !== null
         ? {
@@ -180,6 +192,8 @@ function getStepSlugForField(fieldName: string): StepSlug | null {
   if (fieldName.startsWith('accounts') || fieldName === 'accounts') return 'accounts';
   if (fieldName.startsWith('debts') || fieldName === 'debts') return 'debts';
   if (fieldName.startsWith('benefits') || fieldName === 'benefits') return 'benefits';
+  if (fieldName.startsWith('government_pensions') || fieldName === 'government_pensions')
+    return 'government_pensions';
   if (fieldName.startsWith('property_goals') || fieldName === 'property_goals')
     return 'property_goals';
   return null;
@@ -307,9 +321,11 @@ export function ProfileWizardShell() {
                     ? formValues.debts
                     : slug === 'benefits'
                       ? formValues.benefits
-                      : slug === 'property_goals'
-                        ? formValues.property_goals
-                        : null;
+                      : slug === 'government_pensions'
+                        ? formValues.government_pensions
+                        : slug === 'property_goals'
+                          ? formValues.property_goals
+                          : null;
 
       if (stepData) {
         void debouncedSave(slug, stepData, currentStepIndex);
@@ -465,6 +481,9 @@ export function ProfileWizardShell() {
                 {/* Benefits step */}
                 {currentStepConfig.id === 'benefits' && <BenefitsStep />}
 
+                {/* Government Pensions step (v4.7 WIZ-03) */}
+                {currentStepConfig.id === 'government-pensions' && <GovernmentPensionsStep />}
+
                 {/* Property & Goals step */}
                 {currentStepConfig.id === 'property-goals' && <PropertyGoalsStep />}
 
@@ -476,6 +495,7 @@ export function ProfileWizardShell() {
                   currentStepConfig.id !== 'accounts' &&
                   currentStepConfig.id !== 'debts' &&
                   currentStepConfig.id !== 'benefits' &&
+                  currentStepConfig.id !== 'government-pensions' &&
                   currentStepConfig.id !== 'property-goals' && (
                     <div className="py-12 text-center text-muted-foreground">Coming soon</div>
                   )}

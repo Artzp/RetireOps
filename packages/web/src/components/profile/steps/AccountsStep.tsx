@@ -108,6 +108,11 @@ export function AccountsStep() {
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Tip: rounded balances work fine for planning. We never need your account number, SIN, or
+        banking credentials.
+      </p>
+
       {fields.length === 0 && (
         <div className="py-12 text-center">
           <p className="text-sm font-bold text-ds-on-background">No accounts yet</p>

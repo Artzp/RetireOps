@@ -7,6 +7,13 @@ export interface AccountCardInfo {
   id: string;
   label: string;
   type: string;
+  /**
+   * Current balance as captured on the AccountsStep form. Stored as the raw
+   * form value (string from the controlled input, possibly empty). Optional
+   * because some legacy fixtures and codepaths construct cards without it.
+   * Consumers coerce via `Number(currentBalance) || 0` — see constraint-warnings.ts.
+   */
+  currentBalance?: number | string;
 }
 
 /**
@@ -23,10 +30,13 @@ export function extractAccountCards(stepData: Record<string, unknown>): AccountC
       : [];
   return cards.map((card: unknown) => {
     const c = card as Record<string, unknown>;
+    const rawBalance = c.currentBalance;
     return {
       id: String(c._serverId ?? c.id ?? ''),
       label: String(c.label ?? c.name ?? c.type ?? 'Account'),
       type: String(c.type ?? ''),
+      currentBalance:
+        typeof rawBalance === 'number' || typeof rawBalance === 'string' ? rawBalance : 0,
     };
   });
 }

@@ -21,6 +21,7 @@ export type StepSlug =
   | 'accounts'
   | 'debts'
   | 'benefits'
+  | 'government_pensions'
   | 'property_goals';
 
 export async function getProfile(): Promise<ProfileData | null> {

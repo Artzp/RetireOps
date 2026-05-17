@@ -1,4 +1,4 @@
-import { DEFAULT_ASSUMPTIONS, DEFAULT_RETURNS } from '@retireops/shared';
+import { DEFAULT_ASSUMPTIONS, DEFAULT_RETURNS } from '@retireops/shared/constants';
 
 export interface SettingsAssumptions {
   inflationRate?: number;

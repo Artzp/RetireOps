@@ -70,6 +70,17 @@ function renderEditableTab(rows: ProjectionYearRow[], decisions: ScenarioDecisio
   );
 }
 
+/**
+ * The "Government pension timing" panel is collapsed by default. Tests that
+ * interact with anything inside it (presets, age selects, outcome summary,
+ * compare button) must expand it first.
+ */
+async function expandTimingPanel(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await act(async () => {
+    await user.click(screen.getByRole('button', { name: /Government pension timing/ }));
+  });
+}
+
 describe('YearByYearTab government pension timing support', () => {
   it('preset buttons update primary and spouse draft select values for couple scenarios', async () => {
     const user = userEvent.setup();
@@ -81,6 +92,8 @@ describe('YearByYearTab government pension timing support', () => {
       spouseOasStartAge: 65,
       spouseLifeExpectancy: 97,
     });
+
+    await expandTimingPanel(user);
 
     await act(async () => {
       await user.click(screen.getByRole('button', { name: 'Defer both to 70' }));
@@ -96,7 +109,8 @@ describe('YearByYearTab government pension timing support', () => {
     expect(screen.getByRole('combobox', { name: 'Spouse life age' })).toHaveTextContent('Age 97');
   });
 
-  it('outcome summary calculates lifetime and depletion values from projection rows', () => {
+  it('outcome summary calculates lifetime and depletion values from projection rows', async () => {
+    const user = userEvent.setup();
     renderEditableTab([
       makeRow(2035, {
         age: 65,
@@ -123,6 +137,8 @@ describe('YearByYearTab government pension timing support', () => {
         householdNetWorth: 0,
       }),
     ]);
+
+    await expandTimingPanel(user);
 
     const summary = screen.getByLabelText('Government pension timing outcome summary');
 
@@ -169,6 +185,8 @@ describe('YearByYearTab government pension timing support', () => {
       cppStartAge: 65,
       oasStartAge: 65,
     });
+
+    await expandTimingPanel(user);
 
     await act(async () => {
       await user.click(screen.getByRole('button', { name: 'Compare Timing' }));

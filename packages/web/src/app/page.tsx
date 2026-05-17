@@ -79,7 +79,7 @@ export default function HomePage() {
               <FeatureCard
                 icon={Calculator}
                 title="Canadian Tax Accuracy"
-                description="See how federal and provincial taxes affect your retirement income across all 13 provinces and territories."
+                description="See how federal and provincial taxes affect your after-tax spending in retirement across all 13 provinces and territories."
               />
               <FeatureCard
                 icon={BadgeDollarSign}

@@ -7,16 +7,16 @@
  * The formula matches the engine exactly:
  *   real = nominal / (1 + inflationRate)^yearOffset
  *
- * DisplayMode and MONETARY_FIELDS are imported from @retireops/shared
+ * DisplayMode and MONETARY_FIELDS are imported from @retireops/shared/constants
  * (single source of truth) to avoid drift risk with the engine copy.
  *
  * @see docs/source-of-truth/06-investment-engine.md — Real vs. Nominal Dollars
  */
 
-import type { ProjectionYearRow } from '@retireops/shared';
-import { MONETARY_FIELDS } from '@retireops/shared';
+import type { ProjectionYearRow } from '@retireops/shared/types';
+import { MONETARY_FIELDS } from '@retireops/shared/constants';
 
-export type { DisplayMode } from '@retireops/shared';
+export type { DisplayMode } from '@retireops/shared/constants';
 
 /**
  * Apply a display mode to an array of projection rows.

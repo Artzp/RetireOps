@@ -63,7 +63,7 @@ export default function DashboardPage() {
       icon: PiggyBank,
     },
     {
-      title: 'Projected Retirement Income',
+      title: 'Projected After-Tax Spending Covered',
       value: isLoading ? '...' : retirementIncomeValue,
       change: latestCompleted ? 'Average in retirement' : 'Run a projection to see',
       trend: 'neutral',

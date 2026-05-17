@@ -22,7 +22,7 @@ import {
   type SuperGroup,
   type SubGroup,
 } from '../year-by-year-columns';
-import { MONETARY_FIELDS } from '@retireops/shared';
+import { MONETARY_FIELDS } from '@retireops/shared/constants';
 
 const SPARSE_OFF: SparseFlags = {
   hasGis: false,

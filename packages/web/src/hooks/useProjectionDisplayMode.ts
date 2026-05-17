@@ -10,9 +10,9 @@
  */
 
 import { useState } from 'react';
-import type { DisplayMode } from '@retireops/shared';
+import type { DisplayMode } from '@retireops/shared/constants';
 
-export type { DisplayMode } from '@retireops/shared';
+export type { DisplayMode } from '@retireops/shared/constants';
 
 /**
  * Hook that manages the active display mode for projection results.

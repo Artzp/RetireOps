@@ -116,7 +116,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     oneLiner: 'A non-taxable monthly top-up for low-income seniors who already receive OAS.',
     paragraphs: [
       "The Guaranteed Income Supplement is paid on top of OAS to seniors with very low income. It's income-tested: every dollar of other income above an exemption reduces the GIS payment by 50 cents.",
-      "For most plans the projection won't pay any GIS — typical retirement income is above the threshold. It can show up briefly in late-life years if savings are exhausted, or as a meaningful slice of the plan for households with mostly TFSA + government-benefit income.",
+      "For most plans the projection won't pay any GIS — typical after-tax spending in retirement is above the threshold. It can show up briefly in late-life years if savings are exhausted, or as a meaningful slice of the plan for households with mostly TFSA + government-benefit income.",
     ],
     bullets: [
       'Eligibility: age 65+, currently receiving OAS, residing in Canada.',
@@ -239,7 +239,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     paragraphs: [
       'RRSP contributions reduce your taxable income for the year you make them, and the investments inside grow without annual tax. You pay tax later, when you withdraw — usually in retirement, at a (hopefully) lower marginal rate than you paid when contributing.',
       "You must convert your RRSP into a RRIF (or buy an annuity) by December 31 of the year you turn 71. After that, the RRIF's minimum withdrawal rules take over.",
-      "Spousal RRSPs let one spouse contribute to the other's account while still claiming the deduction — useful for income splitting if one spouse will have a lower retirement income. The CRA's 3-year attribution rule means very recent contributions can be taxed back to the contributing spouse if withdrawn early.",
+      "Spousal RRSPs let one spouse contribute to the other's account while still claiming the deduction — useful for income splitting if one spouse will have lower after-tax spending in retirement. The CRA's 3-year attribution rule means very recent contributions can be taxed back to the contributing spouse if withdrawn early.",
     ],
     bullets: [
       "Contribution room: 18% of last year's earned income, up to $32,490 (2025).",
