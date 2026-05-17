@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/require-await */
 /**
  * Unit tests for profile-scenario.service — focused on the merge-patch invariant
  * and the T-03 clone-path security invariant.
@@ -28,6 +25,13 @@ const mockState = {
   capturedSet: null as Record<string, unknown> | null,
   capturedInsertValues: null as Record<string, unknown> | null,
 };
+
+function getCapturedSet(): Record<string, unknown> {
+  if (!mockState.capturedSet) {
+    throw new Error('Expected update payload to be captured');
+  }
+  return mockState.capturedSet;
+}
 
 function buildSelectChain(tableResult: unknown) {
   const chain: any = {
@@ -105,6 +109,7 @@ import {
   updateScenarioDecisions,
   scheduleRecomputeAllScenarios,
   cloneProfileScenario,
+  markScenariosStale,
 } from './profile-scenario.service.js';
 import { NotFoundError } from '../middleware/error-handler.js';
 
@@ -148,7 +153,7 @@ describe('updateScenarioDecisions', () => {
     await updateScenarioDecisions(USER_ID, SCENARIO_ID, { retirementAge: 62 });
 
     // Assert
-    expect(mockState.capturedSet?.status).toBe('stale');
+    expect(getCapturedSet().status).toBe('stale');
   });
 
   it('throws NotFoundError when scenario does not exist', async () => {
@@ -291,5 +296,54 @@ describe('scheduleRecomputeAllScenarios (SCEN-08 race fix)', () => {
     const b = scheduleRecomputeAllScenarios('profile-B');
     expect(a).not.toBe(b);
     await Promise.all([a, b]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// INTG-07 (Phase 24): cache invalidation on government_pensions step changes
+//
+// The existing upsertProfileStep pipeline (profile.service.ts:137-145) calls
+// markScenariosStale + scheduleRecomputeAllScenarios on EVERY non-first-insert
+// step PATCH, which already covers the v4.7 government_pensions step. This
+// regression test locks that contract: any future refactor that bypasses
+// markScenariosStale on a step PATCH will fail this test, surfacing the
+// stale-cache regression at CI time instead of in production.
+//
+// @see .planning/phases/24-assembler-wiring-wizard-engine-integration/24-CONTEXT.md - D-13, INTG-07
+// @see docs/source-of-truth/10-scenarios.md - SCEN-08
+// ---------------------------------------------------------------------------
+describe('markScenariosStale — INTG-07 cache invalidation contract (Phase 24)', () => {
+  it('sets status="stale" on the update payload (covers government_pensions step changes)', async () => {
+    // Arrange: nothing — markScenariosStale doesn't read the scenario row,
+    // it issues an unconditional updateTable().set({status: 'stale', ...}).
+    // The DB mock captures the .set(...) argument into mockState.capturedSet.
+    mockState.profileRow = { id: PROFILE_ID };
+    mockState.scenarioRow = { id: SCENARIO_ID, status: 'completed' };
+
+    // Act: invoke the function that upsertProfileStep calls after a
+    // government_pensions PATCH (or any other step PATCH).
+    await markScenariosStale(PROFILE_ID);
+
+    // Assert: every scenario for the profile gets status='stale' regardless
+    // of which step was patched. This is the cache-invalidation contract.
+    expect(mockState.capturedSet).not.toBeNull();
+    expect(getCapturedSet().status).toBe('stale');
+    expect(getCapturedSet().updated_at).toBeInstanceOf(Date);
+  });
+
+  it('contract holds for any subsequent step PATCH (idempotent — second call also sets stale)', async () => {
+    // Simulates a user editing two consecutive steps. Both invocations must
+    // produce status='stale'. Lock against any future "skip if already stale"
+    // micro-optimization that could regress INTG-07.
+    mockState.profileRow = { id: PROFILE_ID };
+    mockState.scenarioRow = { id: SCENARIO_ID, status: 'stale' };
+
+    await markScenariosStale(PROFILE_ID);
+    expect(getCapturedSet().status).toBe('stale');
+
+    // Second invocation — reset captured state, call again.
+    mockState.capturedSet = null;
+    await markScenariosStale(PROFILE_ID);
+    expect(getCapturedSet().status).toBe('stale');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CoupleYearlyResult } from '@retireops/shared';
+import type { CoupleYearlyResult, ScenarioDecisions } from '@retireops/shared';
 import { isCoupleResult } from '@retireops/shared';
 import {
   transformToFrontendOutput,
@@ -7,6 +7,7 @@ import {
   transformToProjectionYearRows,
 } from './projection-transformer.js';
 import type { FrontendInputData } from './projection-transformer.js';
+import { applyScenarioDecisions } from './scenario-decisions.js';
 import { runSingleProjection, runCoupleProjection } from '@retireops/calculation-engine';
 
 describe('projection-transformer', () => {
@@ -335,6 +336,239 @@ describe('projection-transformer', () => {
         expect(result.withdrawalOverrides).toEqual(withdrawalOverrides);
         expect(result.spendingOverrides).toEqual(spendingOverrides);
         expect(result.surplusDestination).toBe('nonreg');
+      });
+    });
+
+    /**
+     * Phase 26 — ENG-01..04 strategy field forwarding (trip-wire for Pitfall 1).
+     *
+     * applyScenarioDecisions writes the 7 strategy fields onto the extended
+     * ScenarioAppliedInput shape at scenario-decisions.ts:135-244. Prior to
+     * Phase 26 the `applied` cast in transformToProjectionInput did NOT declare
+     * these fields, so they were silently dropped at the API layer — every
+     * preset and account-priority decision was cosmetic until this phase.
+     *
+     * These tests fail against the pre-Phase-26 transformer (no `applied.X`
+     * declaration → no forwarding `if` block → result.X stays undefined).
+     * They are the regression trip-wire required by ENG-05.
+     *
+     * @see .planning/phases/26-engine-field-forwarding/26-CONTEXT.md (Pitfall 1)
+     * @see .planning/phases/26-engine-field-forwarding/26-RESEARCH.md (audit table)
+     */
+    describe('Phase 26: ScenarioDecisions strategy field forwarding (ENG-01..04)', () => {
+      it('forwards drawdownOrder from ScenarioAppliedInput to ProjectionInput (ENG-01)', () => {
+        const drawdownOrder = ['tfsa', 'rrsp', 'nonReg'];
+        const fixture = {
+          ...singleUserFixture,
+          drawdownOrder,
+        } as FrontendInputData & { drawdownOrder: string[] };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.drawdownOrder).toEqual(drawdownOrder);
+      });
+
+      it('forwards rrspMeltdown from ScenarioAppliedInput to ProjectionInput (ENG-02)', () => {
+        const rrspMeltdown = {
+          enabled: true,
+          annualAmount: 25000,
+          startYear: 2032,
+          endYear: 2040,
+        };
+        const fixture = {
+          ...singleUserFixture,
+          rrspMeltdown,
+        } as FrontendInputData & { rrspMeltdown: typeof rrspMeltdown };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.rrspMeltdown).toEqual(rrspMeltdown);
+      });
+
+      /**
+       * Phase 26 review WR-02 trip-wire — rrspMeltdown.targetAmount (RMLT-03 floor guard).
+       *
+       * ScenarioDecisions.rrspMeltdown declares `targetAmount?: number` and the engine reads
+       * it as the RMLT-03 floor guard. Pre-WR-02, `ScenarioAppliedInput.rrspMeltdown` only
+       * declared 4 fields and `applyScenarioDecisions` (scenario-decisions.ts:143-150) copied
+       * only those 4 — `targetAmount` was silently stripped BEFORE the Phase 26 transformer
+       * forward ever saw it. End-to-end: user-configured `targetAmount` never reached engine.
+       *
+       * This test runs the full applyScenarioDecisions → transformToProjectionInput chain
+       * because the regression lives upstream of the transformer cast — a transformer-only
+       * test (mirroring ENG-02 above) would pass even when targetAmount is stripped.
+       *
+       * @see .planning/phases/26-engine-field-forwarding/26-REVIEW.md WR-02
+       * @see packages/shared/src/types/projection.ts (ProjectionInput.rrspMeltdown.targetAmount — RMLT-03)
+       */
+      it('round-trips rrspMeltdown.targetAmount through applyScenarioDecisions + transformToProjectionInput (WR-02)', () => {
+        const decisions: ScenarioDecisions = {
+          rrspMeltdown: {
+            enabled: true,
+            annualAmount: 25000,
+            startYear: 2032,
+            endYear: 2040,
+            targetAmount: 50000,
+          },
+        };
+
+        const applied = applyScenarioDecisions(singleUserFixture, decisions);
+
+        // First proof point: applyScenarioDecisions must preserve targetAmount.
+        // Pre-WR-02 this assertion failed — targetAmount was stripped at the copy.
+        expect(applied.rrspMeltdown?.targetAmount).toBe(50000);
+
+        // Second proof point: the transformer must forward the full rrspMeltdown
+        // object (already covered by ENG-02 above, but re-asserting end-to-end).
+        const result = transformToProjectionInput(applied);
+        expect(result.rrspMeltdown?.targetAmount).toBe(50000);
+      });
+
+      it('round-trips rrspMeltdown without targetAmount through applyScenarioDecisions (WR-02 — omission preserved)', () => {
+        const decisions: ScenarioDecisions = {
+          rrspMeltdown: {
+            enabled: true,
+            annualAmount: 25000,
+            startYear: 2032,
+            endYear: 2040,
+          },
+        };
+
+        const applied = applyScenarioDecisions(singleUserFixture, decisions);
+
+        // When targetAmount is omitted from decisions, the copy must NOT introduce
+        // an undefined `targetAmount` key — additive-invariant.
+        expect(applied.rrspMeltdown).toEqual({
+          enabled: true,
+          annualAmount: 25000,
+          startYear: 2032,
+          endYear: 2040,
+        });
+        expect(applied.rrspMeltdown).not.toHaveProperty('targetAmount');
+      });
+
+      it('forwards oasClawbackAvoidance from ScenarioAppliedInput to ProjectionInput (ENG-03)', () => {
+        const oasClawbackAvoidance = { enabled: true, incomeThreshold: 90997 };
+        const fixture = {
+          ...singleUserFixture,
+          oasClawbackAvoidance,
+        } as FrontendInputData & { oasClawbackAvoidance: typeof oasClawbackAvoidance };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.oasClawbackAvoidance).toEqual(oasClawbackAvoidance);
+      });
+
+      it('forwards incomeSplitting from ScenarioAppliedInput to ProjectionInput (ENG-04 audit promotion)', () => {
+        const incomeSplitting = { enabled: true, splitPercent: 0.5 };
+        const fixture = {
+          ...singleUserFixture,
+          incomeSplitting,
+        } as FrontendInputData & { incomeSplitting: typeof incomeSplitting };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.incomeSplitting).toEqual(incomeSplitting);
+      });
+
+      it('forwards contributionOverrides from ScenarioAppliedInput to ProjectionInput (ENG-04 audit promotion)', () => {
+        const contributionOverrides = [
+          { accountType: 'rrsp' as const, annualAmount: 12000, startYear: 2027, endYear: 2030 },
+          { accountType: 'tfsa' as const, annualAmount: 7000, startYear: 2027, endYear: 2030 },
+        ];
+        const fixture = {
+          ...singleUserFixture,
+          contributionOverrides,
+        } as FrontendInputData & { contributionOverrides: typeof contributionOverrides };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.contributionOverrides).toEqual(contributionOverrides);
+      });
+
+      it('forwards ageBandReductions from ScenarioAppliedInput to ProjectionInput (ENG-04 audit promotion)', () => {
+        const ageBandReductions = [
+          { fromAge: 75, reductionPercent: 0.1 },
+          { fromAge: 85, reductionPercent: 0.2 },
+        ];
+        const fixture = {
+          ...singleUserFixture,
+          ageBandReductions,
+        } as FrontendInputData & { ageBandReductions: typeof ageBandReductions };
+
+        const result = transformToProjectionInput(fixture);
+
+        expect(result.ageBandReductions).toEqual(ageBandReductions);
+      });
+
+      it('forwards legacyTarget from ScenarioAppliedInput to ProjectionInput (ENG-04 audit promotion, including the 0 edge case)', () => {
+        const fixture = {
+          ...singleUserFixture,
+          legacyTarget: 0,
+        } as FrontendInputData & { legacyTarget: number };
+
+        const result = transformToProjectionInput(fixture);
+
+        // `!== undefined` semantics — `legacyTarget: 0` must forward, not be coerced to undefined by truthiness.
+        expect(result.legacyTarget).toBe(0);
+      });
+
+      it('Test A — applyScenarioDecisions writes decisions.inflationRate into BOTH result.inflationRate (decimal) AND result.assumptions.inflationRate (percent) — load-bearing trip-wire for the SPD-02 patch', () => {
+        // Construct a base whose `assumptions.inflationRate` is DELIBERATELY DIFFERENT
+        // from the decision-level value so a passing post-fix assertion CANNOT be
+        // satisfied by the pre-fix code path (which only writes top-level
+        // result.inflationRate and leaves result.assumptions.inflationRate at the
+        // base value of 2.5). This is the load-bearing assertion that the patched
+        // `result.assumptions = { ...result.assumptions, inflationRate: decisions.inflationRate * 100 }`
+        // write in scenario-decisions.ts:~221-228 actually runs.
+        const base: FrontendInputData = {
+          ...singleUserFixture,
+          assumptions: { ...singleUserFixture.assumptions, inflationRate: 2.5 },
+        };
+        const decisions: ScenarioDecisions = { inflationRate: 0.03 };
+
+        const applied = applyScenarioDecisions(base, decisions) as FrontendInputData & {
+          inflationRate?: number;
+          assumptions?: { inflationRate?: number };
+        };
+
+        // Top-level decimal — pre-existing behavior; must remain intact post-patch.
+        expect(applied.inflationRate).toBe(0.03);
+        // The patched write — assumes percentage. Pre-fix this is still 2.5; post-fix it is 3.
+        // This single assertion is what the patch is load-bearing for.
+        expect(applied.assumptions?.inflationRate).toBe(3);
+      });
+
+      it('Test B — decision-level inflationRate round-trips through transformToProjectionInput to ProjectionInput.inflationRate (end-to-end proof the patch reaches the transformer)', () => {
+        // Same base + decisions as Test A. Different proof point: the transformer
+        // reads `frontendInput.assumptions?.inflationRate` (percent) and divides by
+        // 100 to produce `ProjectionInput.inflationRate` (decimal). If the patch
+        // does NOT write into assumptions, the transformer reads the un-overridden
+        // base value 2.5 → result.inflationRate ≈ 0.025 (fails). Post-patch the
+        // transformer reads 3 → result.inflationRate ≈ 0.03 (passes).
+        const base: FrontendInputData = {
+          ...singleUserFixture,
+          assumptions: { ...singleUserFixture.assumptions, inflationRate: 2.5 },
+        };
+        const decisions: ScenarioDecisions = { inflationRate: 0.03 };
+        const applied = applyScenarioDecisions(base, decisions);
+
+        const result = transformToProjectionInput(applied);
+
+        // Transformer converts percent → rate. Use approximate equality to avoid FP drift on /100.
+        expect(result.inflationRate).toBeCloseTo(0.03, 10);
+      });
+
+      it('omits all seven Phase 26 strategy fields when ScenarioAppliedInput does not set them (additive invariant)', () => {
+        const result = transformToProjectionInput(singleUserFixture);
+
+        expect(result.drawdownOrder).toBeUndefined();
+        expect(result.rrspMeltdown).toBeUndefined();
+        expect(result.oasClawbackAvoidance).toBeUndefined();
+        expect(result.incomeSplitting).toBeUndefined();
+        expect(result.contributionOverrides).toBeUndefined();
+        expect(result.ageBandReductions).toBeUndefined();
+        expect(result.legacyTarget).toBeUndefined();
       });
     });
 

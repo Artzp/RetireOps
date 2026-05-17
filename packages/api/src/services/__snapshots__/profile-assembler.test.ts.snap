@@ -1,0 +1,58 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`assembleProfileInputData — pre-v4.7 legacy fallback (INTG-04) > pre-v4.7 couple profile produces byte-identical FrontendInputData with no new spouse fields > pre-v4.7-couple-byte-identical 1`] = `
+"{
+  "personalInfo": {
+    "dateOfBirth": "1960-01-01",
+    "province": "ON",
+    "retirementAge": 65,
+    "lifeExpectancy": 90,
+    "maritalStatus": "married"
+  },
+  "spouse": {
+    "dateOfBirth": "1962-03-15",
+    "retirementAge": 65,
+    "lifeExpectancy": 90,
+    "province": "ON"
+  },
+  "coupleSettings": {
+    "sharedRetirementSpending": 0
+  },
+  "accounts": [],
+  "incomeSources": [],
+  "governmentBenefits": {
+    "cppStartAge": 65,
+    "oasStartAge": 65,
+    "yearsOfResidence": 40,
+    "estimatedCppAmount": 14000
+  },
+  "expenses": {
+    "currentAnnualExpenses": 0,
+    "retirementAnnualExpenses": 0
+  }
+}"
+`;
+
+exports[`assembleProfileInputData — pre-v4.7 legacy fallback (INTG-04) > pre-v4.7 single-person profile produces byte-identical FrontendInputData > pre-v4.7-byte-identical 1`] = `
+"{
+  "personalInfo": {
+    "dateOfBirth": "1960-01-01",
+    "province": "ON",
+    "retirementAge": 65,
+    "lifeExpectancy": 90,
+    "maritalStatus": "single"
+  },
+  "accounts": [],
+  "incomeSources": [],
+  "governmentBenefits": {
+    "cppStartAge": 65,
+    "oasStartAge": 65,
+    "yearsOfResidence": 40,
+    "estimatedCppAmount": 14000
+  },
+  "expenses": {
+    "currentAnnualExpenses": 0,
+    "retirementAnnualExpenses": 0
+  }
+}"
+`;

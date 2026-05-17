@@ -477,9 +477,11 @@ export function transformToProjectionInput(frontendInput: FrontendInputData): Pr
     result.nonRegRealizedCapitalGains = nonRegRealizedCapitalGains;
   }
 
-  // Add optional government benefits fields only if they have values
-  // Treat 0 as unset so the engine default ($12,000/year) applies when user hasn't entered their CPP estimate
-  if (frontendInput.governmentBenefits.estimatedCppAmount) {
+  // Add optional government benefits fields only if they have values.
+  // Use !== undefined (not falsy) so an explicit user-entered CPP of 0 is honoured (D-07).
+  // When the assembler omits estimatedCppAmount (mode is 'defaulted'/legacy/undefined),
+  // the field is absent here, so the engine default ($12,000/year) still applies.
+  if (frontendInput.governmentBenefits.estimatedCppAmount !== undefined) {
     result.expectedCPPAt65 = frontendInput.governmentBenefits.estimatedCppAmount;
   }
   if (frontendInput.governmentBenefits.cppStartAge !== undefined) {
@@ -546,6 +548,15 @@ export function transformToProjectionInput(frontendInput: FrontendInputData): Pr
     surplusDestination?: ProjectionInput['surplusDestination'];
     householdSpendingMode?: ProjectionInput['householdSpendingMode'];
     strategyId?: ProjectionInput['strategyId'];
+    // --- Phase 26: ENG-01..03 strategy fields forwarded to close the IN-01/IN-02 gap ---
+    drawdownOrder?: ProjectionInput['drawdownOrder'];
+    rrspMeltdown?: ProjectionInput['rrspMeltdown'];
+    oasClawbackAvoidance?: ProjectionInput['oasClawbackAvoidance'];
+    // --- Phase 26: ENG-04 audit-promoted fields (all engine-consumed; were silently dropped) ---
+    incomeSplitting?: ProjectionInput['incomeSplitting'];
+    contributionOverrides?: ProjectionInput['contributionOverrides'];
+    ageBandReductions?: ProjectionInput['ageBandReductions'];
+    legacyTarget?: ProjectionInput['legacyTarget'];
   };
   if (applied.bracketFill !== undefined) {
     result.bracketFill = applied.bracketFill;
@@ -580,6 +591,62 @@ export function transformToProjectionInput(frontendInput: FrontendInputData): Pr
   // @see docs/source-of-truth/07-withdrawal-strategies.md
   if (applied.strategyId !== undefined) {
     result.strategyId = applied.strategyId;
+  }
+
+  // Phase 26 — ENG-01: drawdownOrder forwarded from ScenarioAppliedInput → ProjectionInput.
+  // applyScenarioDecisions writes `result.drawdownOrder = [...decisions.drawdownOrder]` at
+  // scenario-decisions.ts:135-137, but without this forward the engine never sees the
+  // user's account-priority order. Engine consumer: resolveDrawdownOrder() at
+  // packages/calculation-engine/src/projection/orchestration/calculate-person-year.ts:422.
+  // @see .planning/phases/26-engine-field-forwarding/26-CONTEXT.md (Pitfall 1)
+  // @see docs/source-of-truth/07-withdrawal-strategies.md
+  if (applied.drawdownOrder !== undefined) {
+    result.drawdownOrder = applied.drawdownOrder;
+  }
+
+  // Phase 26 — ENG-02: rrspMeltdown forwarded from ScenarioAppliedInput → ProjectionInput.
+  // applyScenarioDecisions writes `result.rrspMeltdown = {...}` at scenario-decisions.ts:143-150.
+  // Engine consumer: applyMeltdown() at calculate-person-year.ts:381.
+  // @see docs/source-of-truth/07-withdrawal-strategies.md (RRSP meltdown — Smooth-RRSP-before-71 preset)
+  if (applied.rrspMeltdown !== undefined) {
+    result.rrspMeltdown = applied.rrspMeltdown;
+  }
+
+  // Phase 26 — ENG-03: oasClawbackAvoidance forwarded from ScenarioAppliedInput → ProjectionInput.
+  // applyScenarioDecisions writes `result.oasClawbackAvoidance = {...}` at scenario-decisions.ts:159-164.
+  // Engine consumer: applyOASClawbackTrim() at calculate-person-year.ts:523.
+  // @see docs/source-of-truth/18-pensions-2026.md (OAS clawback thresholds — Protect-OAS preset)
+  if (applied.oasClawbackAvoidance !== undefined) {
+    result.oasClawbackAvoidance = applied.oasClawbackAvoidance;
+  }
+
+  // Phase 26 — ENG-04 audit promotion: incomeSplitting forwarded.
+  // applyScenarioDecisions writes at scenario-decisions.ts:152-157.
+  // Engine consumer: multi-year.ts:531; couple-calculator.ts:46,76,136.
+  if (applied.incomeSplitting !== undefined) {
+    result.incomeSplitting = applied.incomeSplitting;
+  }
+
+  // Phase 26 — ENG-04 audit promotion: contributionOverrides forwarded.
+  // applyScenarioDecisions writes at scenario-decisions.ts:179-203 (with accountId→accountType translation).
+  // Engine consumer: year-input-builder.ts:144,277,402.
+  if (applied.contributionOverrides !== undefined) {
+    result.contributionOverrides = applied.contributionOverrides;
+  }
+
+  // Phase 26 — ENG-04 audit promotion: ageBandReductions forwarded.
+  // applyScenarioDecisions writes at scenario-decisions.ts:234-239.
+  // Engine consumer: spending.ts:69-127 (applyAgeBandReduction); year-input-builder.ts:145,278,403.
+  if (applied.ageBandReductions !== undefined) {
+    result.ageBandReductions = applied.ageBandReductions;
+  }
+
+  // Phase 26 — ENG-04 audit promotion: legacyTarget forwarded.
+  // applyScenarioDecisions writes at scenario-decisions.ts:242-244.
+  // Engine consumer: multi-year.ts:243 (single), :715 (couple) — sets legacyTargetMet boolean.
+  // NOTE: Use `!== undefined` (not truthiness) so `legacyTarget: 0` is forwarded explicitly.
+  if (applied.legacyTarget !== undefined) {
+    result.legacyTarget = applied.legacyTarget;
   }
 
   if (frontendInput.spouse?.dateOfBirth) {

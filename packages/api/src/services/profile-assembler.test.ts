@@ -470,3 +470,139 @@ describe('FIX-01: raw array frontend shape', () => {
     expect(result.accounts[1]?.contributorOwner).toBe('primary');
   });
 });
+
+// ---------------------------------------------------------------------------
+// INTG-04 — pre-v4.7 legacy fallback byte-identity (Phase 24)
+//
+// Locks the contract that a profile WITHOUT government_pensions step data
+// (i.e. created before v4.7 shipped, or never opened the new wizard step)
+// produces the SAME FrontendInputData.governmentBenefits + spouseData output
+// it did before Phase 24's wizard integration landed. Snapshot guards against
+// accidental future drift in the legacy fallback path.
+//
+// @see .planning/phases/24-assembler-wiring-wizard-engine-integration/24-CONTEXT.md - D-17, D-18, INTG-04
+// ---------------------------------------------------------------------------
+describe('assembleProfileInputData — pre-v4.7 legacy fallback (INTG-04)', () => {
+  it('pre-v4.7 single-person profile produces byte-identical FrontendInputData', () => {
+    // Fixture: pre-v4.7 single-person profile. Legacy benefits.primaryCpp populated;
+    // NO government_pensions key (the v4.7 wizard step was never opened).
+    const preV47Profile = makeProfile({
+      about_you: {
+        dateOfBirth: '1960-01-01',
+        province: 'ON',
+        retirementAge: 65,
+        lifeExpectancy: 90,
+        includeSpouse: false,
+        maritalStatus: 'single',
+      },
+      benefits: {
+        primaryCpp: { estimatedAnnual: 14000 },
+      },
+      // government_pensions: <intentionally omitted — pre-v4.7 shape>
+    });
+
+    const result = assembleProfileInputData(preV47Profile);
+
+    // Anchor-field assertions (legacy-fallback contract per D-01, D-03)
+    expect(result.governmentBenefits.cppStartAge).toBe(65);
+    expect(result.governmentBenefits.oasStartAge).toBe(65);
+    expect(result.governmentBenefits.estimatedCppAmount).toBe(14000);
+    expect(result.governmentBenefits.yearsOfResidence).toBe(40);
+    expect(result.spouse).toBeUndefined();
+
+    // Full-object snapshot catches drift in any field not explicitly asserted above
+    expect(JSON.stringify(result, null, 2)).toMatchSnapshot('pre-v4.7-byte-identical');
+  });
+
+  it('pre-v4.7 couple profile produces byte-identical FrontendInputData with no new spouse fields', () => {
+    // Fixture: pre-v4.7 couple with spouse toggled on but NO government_pensions.
+    // Phase 24's spouse wiring is conditional-spread — the assembler must NOT
+    // populate spouse.expectedCppAt65 / spouse.cppStartAge / spouse.oasStartAge /
+    // spouse.yearsOfResidence when there is no government_pensions step data.
+    // Transformer defaults (in projection-transformer.ts:598-601) apply later
+    // in the pipeline, preserving byte-identity.
+    const preV47Couple = makeProfile({
+      about_you: {
+        dateOfBirth: '1960-01-01',
+        province: 'ON',
+        retirementAge: 65,
+        lifeExpectancy: 90,
+        includeSpouse: true,
+        maritalStatus: 'married',
+      },
+      spouse: {
+        dateOfBirth: '1962-03-15',
+        province: 'ON',
+        retirementAge: 65,
+        lifeExpectancy: 90,
+      },
+      benefits: {
+        primaryCpp: { estimatedAnnual: 14000 },
+        spouseCpp: { estimatedAnnual: 11000 },
+      },
+      // government_pensions: <intentionally omitted>
+    });
+
+    const result = assembleProfileInputData(preV47Couple);
+
+    // Spouse exists but Phase 24's per-spouse fields are NOT populated
+    // (preserves pre-v4.7 transformer-default behavior).
+    expect(result.spouse).toBeDefined();
+    expect(result.spouse?.expectedCppAt65).toBeUndefined();
+    expect(result.spouse?.cppStartAge).toBeUndefined();
+    expect(result.spouse?.oasStartAge).toBeUndefined();
+    expect(result.spouse?.yearsOfResidence).toBeUndefined();
+    // Primary household-level wiring still works
+    expect(result.governmentBenefits.cppStartAge).toBe(65);
+    expect(result.governmentBenefits.estimatedCppAmount).toBe(14000);
+
+    expect(JSON.stringify(result, null, 2)).toMatchSnapshot('pre-v4.7-couple-byte-identical');
+  });
+
+  it('v4.7 wizard data overrides legacy fields per INTG-03 precedence', () => {
+    // Sanity test for the GREEN path of Plan 24-02 (not strictly INTG-04 byte-identity,
+    // but co-located here as the natural complement: confirms the wizard-on path
+    // pulls through). Uses user_entered mode with a non-zero amount.
+    const v47Profile = makeProfile({
+      about_you: {
+        dateOfBirth: '1960-01-01',
+        province: 'QC',
+        retirementAge: 65,
+        lifeExpectancy: 90,
+        includeSpouse: false,
+        maritalStatus: 'single',
+      },
+      benefits: {
+        primaryCpp: { estimatedAnnual: 14000 }, // legacy value — should be OVERRIDDEN
+      },
+      government_pensions: {
+        kind: 'single',
+        cpp_primary: {
+          manualOverrideAnnual: 18500,
+          plannedStartAge: 67,
+          value_source: {
+            mode: 'user_entered',
+            confidence: 'high',
+            citation: 'docs/source-of-truth/05-government-benefits.md#benefit-intake-source-modes',
+          },
+        },
+        oas_primary: {
+          plannedStartAge: 70,
+          residenceYearsAfter18: 35,
+        },
+      },
+    });
+
+    const result = assembleProfileInputData(v47Profile);
+
+    // user_entered amount overrides legacy 14000
+    expect(result.governmentBenefits.estimatedCppAmount).toBe(18500);
+    // Wizard start ages threaded through (no longer hardcoded 65)
+    expect(result.governmentBenefits.cppStartAge).toBe(67);
+    expect(result.governmentBenefits.oasStartAge).toBe(70);
+    // residenceYearsAfter18 threaded through (D-03 — no longer fallback 40)
+    expect(result.governmentBenefits.yearsOfResidence).toBe(35);
+    // Province preserved (D-04 — QC routing via province, not a separate field)
+    expect(result.personalInfo.province).toBe('QC');
+  });
+});

@@ -20,7 +20,7 @@ profileRoutes.use(requireAuth);
 
 // Validation schemas
 const patchStepSchema = z.object({
-  currentStep: z.number().int().min(0).max(7),
+  currentStep: z.number().int().min(0).max(8),
   data: z.union([z.record(z.unknown()), z.array(z.unknown())]),
 });
 

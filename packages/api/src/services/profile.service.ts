@@ -12,6 +12,7 @@ export const VALID_STEPS = [
   'accounts',
   'debts',
   'benefits',
+  'government_pensions',
   'property_goals',
 ] as const;
 export type StepSlug = (typeof VALID_STEPS)[number];

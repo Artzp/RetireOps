@@ -5,9 +5,11 @@
  *
  * Pure function — no I/O, no DB, no Redis.
  * @see .planning/phases/11-profile-data-flow/11-CONTEXT.md - D-03, D-06
+ * @see .planning/phases/24-assembler-wiring-wizard-engine-integration/24-CONTEXT.md - INTG-01..04, D-01..D-08
  */
 import type { FrontendInputData } from './projection-transformer.js';
 import type { ProfileData } from './profile.service.js';
+import { resolveBenefitAmount, type WizardBenefitField } from './benefit-resolver.js';
 
 // -------------------------------------------------------------------------
 // Internal step interfaces (D-06) — NOT exported
@@ -181,6 +183,15 @@ export function assembleProfileInputData(profile: ProfileData): FrontendInputDat
   const spouseStep = (profile.stepData['spouse'] ?? {}) as SpouseStepData;
   // property_goals is read below for legacy retirement spending.
   const benefits = (profile.stepData['benefits'] ?? {}) as BenefitsStepData;
+  // Hoisted once so both the spouse block and the governmentBenefits block share a
+  // single authoritative cast — prevents silent undefined reads when new fields are
+  // added to only one of the two blocks (WR-02).
+  const govPensions = (profile.stepData['government_pensions'] ?? {}) as {
+    cpp_primary?: WizardBenefitField & { plannedStartAge?: number };
+    oas_primary?: WizardBenefitField & { plannedStartAge?: number; residenceYearsAfter18?: number };
+    cpp_spouse?: WizardBenefitField & { plannedStartAge?: number };
+    oas_spouse?: WizardBenefitField & { plannedStartAge?: number; residenceYearsAfter18?: number };
+  };
 
   // -----------------------------------------------------------------------
   // personalInfo — required fields with defaults (D-01, D-02)
@@ -196,16 +207,43 @@ export function assembleProfileInputData(profile: ProfileData): FrontendInputDat
 
   // -----------------------------------------------------------------------
   // spouse — only include when toggle is on and DOB is present (Pattern 2)
+  // v4.7 (D-08): thread per-spouse CPP/OAS from government_pensions.cpp_spouse /
+  // oas_spouse. Conditional spreads preserve pre-v4.7 byte-identity — when the
+  // wizard never wrote spouse pension data, the fields are omitted and
+  // transformToProjectionInput's defaults apply (expectedCppAt65=0, cppStartAge=65,
+  // oasStartAge=65, yearsOfResidence=40).
   // -----------------------------------------------------------------------
-  const spouseData: FrontendInputData['spouse'] | undefined =
-    aboutYou.includeSpouse === true && spouseStep.dateOfBirth !== undefined
-      ? {
-          dateOfBirth: spouseStep.dateOfBirth,
-          retirementAge: spouseStep.retirementAge ?? aboutYou.retirementAge ?? 65,
-          lifeExpectancy: spouseStep.lifeExpectancy ?? aboutYou.lifeExpectancy ?? 90,
-          ...(spouseStep.province !== undefined ? { province: spouseStep.province } : {}),
-        }
-      : undefined;
+  let spouseData: FrontendInputData['spouse'] | undefined = undefined;
+  if (aboutYou.includeSpouse === true && spouseStep.dateOfBirth !== undefined) {
+    // Phase 24: spouse.expectedCppAt65 is ONLY populated from wizard data (cpp_spouse).
+    // Pre-v4.7 assembler never read spouseCpp.estimatedAnnual into this field —
+    // transformToProjectionInput defaulted it to 0. Passing undefined as legacyAmount
+    // preserves byte-identity for pre-v4.7 profiles (INTG-04).
+    // govPensions is hoisted above (WR-02) — single authoritative cast for all four fields.
+    const spouseCppResolution = resolveBenefitAmount(govPensions.cpp_spouse, undefined);
+    const spouseCppStartAgeFromWizard = govPensions.cpp_spouse?.plannedStartAge;
+    const spouseOasStartAgeFromWizard = govPensions.oas_spouse?.plannedStartAge;
+    const spouseYearsOfResidenceFromWizard = govPensions.oas_spouse?.residenceYearsAfter18;
+
+    spouseData = {
+      dateOfBirth: spouseStep.dateOfBirth,
+      retirementAge: spouseStep.retirementAge ?? aboutYou.retirementAge ?? 65,
+      lifeExpectancy: spouseStep.lifeExpectancy ?? aboutYou.lifeExpectancy ?? 90,
+      ...(spouseStep.province !== undefined ? { province: spouseStep.province } : {}),
+      ...(spouseCppResolution.amount !== undefined
+        ? { expectedCppAt65: Number(spouseCppResolution.amount) }
+        : {}),
+      ...(spouseCppStartAgeFromWizard !== undefined
+        ? { cppStartAge: spouseCppStartAgeFromWizard }
+        : {}),
+      ...(spouseOasStartAgeFromWizard !== undefined
+        ? { oasStartAge: spouseOasStartAgeFromWizard }
+        : {}),
+      ...(spouseYearsOfResidenceFromWizard !== undefined
+        ? { yearsOfResidence: spouseYearsOfResidenceFromWizard }
+        : {}),
+    };
+  }
 
   // -----------------------------------------------------------------------
   // accounts — dual-shape detection (per D-02): raw array or cards wrapper
@@ -311,15 +349,52 @@ export function assembleProfileInputData(profile: ProfileData): FrontendInputDat
   }
 
   // -----------------------------------------------------------------------
-  // governmentBenefits — CPP/OAS default to 65 (D-02)
+  // governmentBenefits — v4.7 wizard-aware (INTG-01, INTG-02, INTG-03, INTG-04)
+  //
+  // Reads from stepData.government_pensions.{cpp,oas}_{primary,spouse}.* and
+  // applies override-then-estimator-then-legacy precedence via resolveBenefitAmount.
+  // Pre-v4.7 profiles (no government_pensions step) fall through to the legacy
+  // benefits.{cpp,primary,oas}_* path and produce byte-identical output (locked
+  // by INTG-04 snapshot in profile-assembler.test.ts).
+  //
+  // QC routing (D-04): no new QC-specific field on FrontendInputData.governmentBenefits
+  // — province is already threaded to the engine via personalInfo.province →
+  // transformToProjectionInput (line 434). No engine signature change needed.
+  //
+  // GIS (D-05): the engine derives GIS natively from total income — no
+  // expectedGIS field exists on FrontendInputData. The wizard's GIS values are
+  // displayed at the wizard layer; engine re-evaluates eligibility annually.
+  // Phase 24 does NOT thread gis_primary.manualOverrideAnnual to the engine.
+  //
+  // OAS amount (D-05): same reasoning — no expectedOAS field on the engine
+  // boundary. Engine computes OAS gross from yearsOfResidence + start age +
+  // 2026 parameters; clawback recovery-tax is applied annually (Pitfall §6).
+  // Phase 24 only threads yearsOfResidence + oasStartAge, NOT the wizard's
+  // GROSS amount.
+  //
+  // @see .planning/phases/24-assembler-wiring-wizard-engine-integration/24-CONTEXT.md
+  //      D-01, D-02, D-03, D-04, D-05, D-08
   // -----------------------------------------------------------------------
-  // Read CPP from either legacy primaryCpp or wizard cpp_primary
-  const primaryCppEstimate =
+  // Primary CPP estimate: wizard override / estimate first, legacy fallback otherwise
+  const primaryCppLegacy =
     benefits.primaryCpp?.estimatedAnnual ?? benefits.cpp_primary?.estimatedAnnual;
+  const primaryCppResolution = resolveBenefitAmount(govPensions.cpp_primary, primaryCppLegacy);
+
+  // Primary start ages — 65 fallback preserves pre-v4.7 byte-identity (D-01)
+  const primaryCppStartAge = govPensions.cpp_primary?.plannedStartAge ?? 65;
+  const primaryOasStartAge = govPensions.oas_primary?.plannedStartAge ?? 65;
+
+  // yearsOfResidence — 40 fallback (full pension) per D-03 preserves byte-identity
+  // for pre-v4.7 profiles whose oas_primary.residenceYearsAfter18 is absent.
+  const primaryYearsOfResidence = govPensions.oas_primary?.residenceYearsAfter18 ?? 40;
+
   const governmentBenefits: FrontendInputData['governmentBenefits'] = {
-    cppStartAge: 65,
-    oasStartAge: 65,
-    ...(primaryCppEstimate !== undefined ? { estimatedCppAmount: Number(primaryCppEstimate) } : {}),
+    cppStartAge: primaryCppStartAge,
+    oasStartAge: primaryOasStartAge,
+    yearsOfResidence: primaryYearsOfResidence,
+    ...(primaryCppResolution.amount !== undefined
+      ? { estimatedCppAmount: Number(primaryCppResolution.amount) }
+      : {}),
   };
 
   // -----------------------------------------------------------------------

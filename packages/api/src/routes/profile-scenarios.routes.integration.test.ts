@@ -777,6 +777,44 @@ describe('Phase 1 overrides — PUT /decisions validation (OVER-01..04, ENG-01)'
 
     expect(res.status).toBe(400);
   });
+
+  /**
+   * Phase 27 — PRESET-03: switching to a withdrawal preset updates decisions and
+   * flips scenario status to 'stale' (triggers recompute).
+   *
+   * The PUT body is the preserveTfsaLongest preset tuple (Plan 27-01 WITHDRAWAL_PRESETS).
+   * If a future planner adds `withdrawalPreset` to ScenarioDecisionsSchema, the
+   * Pitfall 8 trip-wire in presets.test.ts will catch it BEFORE this test runs —
+   * but this test still asserts the existing `drawdownOrder` field round-trips.
+   *
+   * @see .planning/phases/27-preset-mapping-infrastructure/27-DECISIONS.md PRESET-05
+   * @see .planning/phases/27-preset-mapping-infrastructure/27-01-PLAN.md (preset tuples)
+   */
+  it('PRESET-03: PATCH with preserveTfsaLongest preset tuple sets status=stale and persists drawdownOrder', async () => {
+    const scenarioId = await seedProfileAndGetScenarioId();
+
+    // Inline the preserveTfsaLongest tuple literal so this test does not depend on
+    // the @retireops/shared/withdrawal dist being built. The literal MUST match
+    // WITHDRAWAL_PRESETS.preserveTfsaLongest byte-for-byte (Plan 27-03 Task 4
+    // audit verifies this).
+    const presetOverlay = {
+      drawdownOrder: ['rrsp', 'rrif', 'nonReg', 'tfsa'],
+    };
+
+    const res = await request(app)
+      .put(`/api/profile/scenarios/${scenarioId}/decisions`)
+      .set('Authorization', 'Bearer test-token')
+      .send(presetOverlay);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const scenario = mockDb._profileScenarios.get(scenarioId);
+    expect(scenario?.status).toBe('stale');
+
+    const decisions = scenario?.decisions as Record<string, unknown>;
+    expect(decisions.drawdownOrder).toEqual(['rrsp', 'rrif', 'nonReg', 'tfsa']);
+  });
 });
 
 // ---------------------------------------------------------------------------

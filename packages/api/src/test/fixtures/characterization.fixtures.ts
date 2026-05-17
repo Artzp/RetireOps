@@ -192,3 +192,128 @@ export function buildCharacterizationCoupleBracketFillFixture(): FrontendInputDa
   };
   return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
 }
+
+/**
+ * COUPLE-05: Drawdown-reverse couple fixture — explicit drawdownOrder path (Phase 26 / ENG-05).
+ *
+ * Uses ScenarioDecisions.drawdownOrder = ['tfsa', 'rrsp', 'nonReg'] LAYERED ON TOP OF the
+ * SAME `householdSpendingMode: 'household'` overlay as COUPLE-02 (household pooling). The
+ * shared overlay is load-bearing for the REGRESSION ENG-05 trip-wire: it makes the
+ * COUPLE-05 vs COUPLE-02 comparison isolate exactly ONE field — drawdownOrder.
+ *
+ * Engine precedence at `packages/calculation-engine/src/withdrawals/strategy.ts:224-235`
+ * resolves order as `drawdownOrder > strategyId > standard`. By setting drawdownOrder
+ * without strategyId, we force the engine to use the explicit token list. The standard
+ * engine order is non_registered → rrif → lif → rrsp → tfsa (TFSA last). This fixture's
+ * order puts TFSA first, which produces materially different year-by-year withdrawal
+ * patterns when contrasted against COUPLE-02 — which uses the IDENTICAL household
+ * baseline but no drawdownOrder overlay.
+ *
+ * Pre-WR-01, COUPLE-05 set only `drawdownOrder` (no `householdSpendingMode: 'household'`),
+ * so the REGRESSION ENG-05 assertion compared COUPLE-05 (drawdownOrder overlay) vs
+ * COUPLE-02 (householdSpendingMode overlay) — TWO different overlays. If drawdownOrder
+ * forwarding were silently reverted, the two runs would still diverge because
+ * householdSpendingMode forwarding independently changes output — defeating the
+ * trip-wire's stated "isolates drawdownOrder forwarding" purpose. Post-WR-01, the
+ * shared baseline makes drawdownOrder the only differing field — pre-fix forwarding
+ * collapses both runs to the same household-pooled standard order (assertion fails);
+ * post-fix the engine receives the explicit order and the snapshot diverges (assertion
+ * passes).
+ *
+ * @see .planning/phases/26-engine-field-forwarding/26-REVIEW.md WR-01 (isolation fix)
+ * @see .planning/phases/26-engine-field-forwarding/26-CONTEXT.md (Pitfall 1)
+ * @see .planning/phases/26-engine-field-forwarding/26-RESEARCH.md (Pitfall 2 — order must be materially different from standard)
+ * @see packages/calculation-engine/src/withdrawals/strategy.ts:224 (resolveDrawdownOrder precedence)
+ */
+export function buildCharacterizationCoupleDrawdownReverseFixture(): FrontendInputData {
+  const decisions: ScenarioDecisions = {
+    // Match COUPLE-02 baseline — load-bearing for REGRESSION ENG-05 isolation (WR-01).
+    householdSpendingMode: 'household',
+    // The field under test — engine precedence puts drawdownOrder above strategyId.
+    drawdownOrder: ['tfsa', 'rrsp', 'nonReg'],
+  };
+  return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 27 — Per-preset regression fixtures (PRESET-04 divergence half).
+//
+// Each fixture overlays a single preset's `Partial<ScenarioDecisions>` onto the
+// SAME `householdSpendingMode: 'household'` baseline used by COUPLE-02 and
+// COUPLE-05. This isolates the preset's decisions as the ONLY differing field
+// vs the baseline — same WR-01 isolation pattern Phase 26 applied for ENG-05.
+//
+// Why hard-code the preset tuples here (vs importing WITHDRAWAL_PRESETS):
+//
+//   The api package builds against `@retireops/shared` dist (compiled JS), not
+//   source. Plan 27-01's WITHDRAWAL_PRESETS lives under the NEW
+//   `@retireops/shared/withdrawal` subpath, whose dist is only available after
+//   the user rebuilds shared (`pnpm --filter @retireops/shared build`). To
+//   keep the regression tests runnable inside the same vitest invocation that
+//   Plan 27-03 commits (no inter-build coordination required), the fixture
+//   tuples are written as inline literals here. They MUST match the
+//   WITHDRAWAL_PRESETS values byte-for-byte — Plan 27-03 Task 4 audits this.
+//
+// @see .planning/phases/27-preset-mapping-infrastructure/27-DECISIONS.md PRESET-04
+// @see .planning/phases/26-engine-field-forwarding/26-REVIEW.md WR-01 (isolation pattern)
+// ---------------------------------------------------------------------------
+
+/**
+ * preserveTfsaLongest preset overlay onto the COUPLE-02 baseline.
+ * drawdownOrder: ['rrsp','rrif','nonReg','tfsa'] — TFSA drawn last.
+ */
+export function buildCharacterizationPresetPreserveTfsaLongestFixture(): FrontendInputData {
+  const decisions: ScenarioDecisions = {
+    householdSpendingMode: 'household',
+    drawdownOrder: ['rrsp', 'rrif', 'nonReg', 'tfsa'],
+  };
+  return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
+}
+
+/**
+ * useTfsaEarlier preset overlay onto the COUPLE-02 baseline.
+ * drawdownOrder: ['nonReg','tfsa','rrsp','rrif'] — TFSA in position 2.
+ */
+export function buildCharacterizationPresetUseTfsaEarlierFixture(): FrontendInputData {
+  const decisions: ScenarioDecisions = {
+    householdSpendingMode: 'household',
+    drawdownOrder: ['nonReg', 'tfsa', 'rrsp', 'rrif'],
+  };
+  return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
+}
+
+/**
+ * smoothRrspRrifBefore71 preset overlay onto the COUPLE-02 baseline.
+ * rrspMeltdown $25k/yr 2026-2031 + drawdownOrder ['rrsp','rrif','nonReg','tfsa'].
+ * Engine consumes rrspMeltdown at calculate-person-year.ts:381 and calculate-year.ts:280.
+ */
+export function buildCharacterizationPresetSmoothRrspRrifBefore71Fixture(): FrontendInputData {
+  const decisions: ScenarioDecisions = {
+    householdSpendingMode: 'household',
+    drawdownOrder: ['rrsp', 'rrif', 'nonReg', 'tfsa'],
+    rrspMeltdown: {
+      enabled: true,
+      annualAmount: 25_000,
+      startYear: 2026,
+      endYear: 2031,
+    },
+  };
+  return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
+}
+
+/**
+ * protectOas preset overlay onto the COUPLE-02 baseline.
+ * oasClawbackAvoidance enabled at $95,323 (2026 threshold) + TFSA-first drawdownOrder.
+ * Engine consumes oasClawbackAvoidance at calculate-year.ts:420 and calculate-person-year.ts:523.
+ */
+export function buildCharacterizationPresetProtectOasFixture(): FrontendInputData {
+  const decisions: ScenarioDecisions = {
+    householdSpendingMode: 'household',
+    drawdownOrder: ['tfsa', 'nonReg', 'rrsp', 'rrif'],
+    oasClawbackAvoidance: {
+      enabled: true,
+      incomeThreshold: 95_323,
+    },
+  };
+  return applyScenarioDecisions(structuredClone(demoHousehold2026FrontendInput), decisions);
+}
