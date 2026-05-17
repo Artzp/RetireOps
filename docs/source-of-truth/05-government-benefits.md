@@ -1,5 +1,9 @@
 # 05 - Government Benefits Specification
 
+> **📍 Current 2026 parameter values:** This document is the **rules layer** — it covers eligibility, calculation formulas, age-adjustment mechanics, and worked examples (using 2024 figures for historical context). For **current 2026 parameter values** that the calculation engine consumes (CPP YMPE, OAS quarterly amounts, GIS thresholds, clawback amounts, etc.), see [`18-pensions-2026.md`](./18-pensions-2026.md). Engine-code citations for 2026 values SHOULD link to the dated-parameter file, not to this file.
+>
+> This split was decided 2026-05-10 (v4.5 Phase 17, Hybrid C integration strategy).
+
 ## Overview
 
 Canadian government retirement benefits form a significant income source for most retirees. The software must accurately model CPP/QPP, OAS, and GIS with their eligibility rules, timing options, and adjustment factors.
@@ -17,6 +21,8 @@ Canadian government retirement benefits form a significant income source for mos
 | Contribution requirement | At least one valid contribution                                  |
 | Standard start age       | 65 years                                                         |
 
+> **Current parameters:** The table below shows 2024 example values (preserved for rules-teaching context). For 2026 CPP/QPP parameter values, see [`18-pensions-2026.md`](./18-pensions-2026.md) — specifically anchors [`#2026-cpp-max-retirement-pension`](./18-pensions-2026.md#2026-cpp-max-retirement-pension), [`#2026-cpp-ympe`](./18-pensions-2026.md#2026-cpp-ympe), [`#2026-cpp-yampe`](./18-pensions-2026.md#2026-cpp-yampe), and [`#2026-qpp-max-retirement-pension`](./18-pensions-2026.md#2026-qpp-max-retirement-pension).
+
 ### Benefit Amounts (2024)
 
 | Metric                | CPP       | QPP       |
@@ -24,6 +30,8 @@ Canadian government retirement benefits form a significant income source for mos
 | Maximum monthly at 65 | $1,364.60 | $1,364.60 |
 | Maximum annual at 65  | $16,375   | $16,375   |
 | Average monthly       | ~$815     | ~$815     |
+
+<a id="cpp-adjustment-factors"></a>
 
 ### Early/Late Adjustment Factors
 
@@ -124,6 +132,8 @@ combined_cpp = MIN(
 | Full benefit     | 40 years residence in Canada after age 18 |
 | Partial benefit  | 10+ years residence (prorated)            |
 
+> **Current parameters:** The table below shows 2024 example values (preserved for rules-teaching context). For 2026 OAS quarterly amounts, see [`18-pensions-2026.md`](./18-pensions-2026.md) — specifically anchors [`#2026-oas-q1-amount-65to74`](./18-pensions-2026.md#2026-oas-q1-amount-65to74), [`#2026-oas-q2-amount-65to74`](./18-pensions-2026.md#2026-oas-q2-amount-65to74), and the 75+ counterparts.
+
 ### Benefit Amounts (2024)
 
 | Category                | Monthly | Annual  |
@@ -167,6 +177,8 @@ ELSE:
 IF current_age >= 75:
   oas_annual = oas_annual × 1.10
 ```
+
+> **Current parameters:** The table below shows 2024 example values (preserved for rules-teaching context). For the 2026 OAS recovery-tax thresholds (clawback floor $95,323; full-clawback ceilings $154,753 for 65–74 / $160,696 for 75+ per Q2 2026), see [`18-pensions-2026.md#2026-oas-clawback-threshold`](./18-pensions-2026.md#2026-oas-clawback-threshold).
 
 ### OAS Clawback (Recovery Tax)
 
@@ -216,6 +228,8 @@ oas_year_n = oas_year_1 × (1 + inflation_rate)^(n-1)
 | Prerequisite | Must be receiving OAS            |
 | Income test  | Very low income (see thresholds) |
 | Residency    | Residing in Canada               |
+
+> **Current parameters:** The table below shows 2024 example values (preserved for rules-teaching context). For 2026 GIS quarterly amounts and income cut-offs, see [`18-pensions-2026.md`](./18-pensions-2026.md) — specifically anchors [`#2026-gis-q2-single-max`](./18-pensions-2026.md#2026-gis-q2-single-max), [`#2026-gis-q2-spouse-on-oas-max`](./18-pensions-2026.md#2026-gis-q2-spouse-on-oas-max), and the earnings-exemption anchors [`#2026-gis-earnings-exemption-first`](./18-pensions-2026.md#2026-gis-earnings-exemption-first) / [`#2026-gis-earnings-exemption-second-50pct`](./18-pensions-2026.md#2026-gis-earnings-exemption-second-50pct).
 
 ### Income Thresholds (2024)
 
@@ -267,6 +281,94 @@ For most projection purposes, treat QPP identically to CPP.
 
 ## Government Benefits Data Model
 
+<a id="benefit-intake-source-modes"></a>
+
+### Benefit Intake Source Modes
+
+The profile wizard must support both manual entry and estimate-assisted entry. Many users know their government-benefit amounts from My Service Canada Account, Service Canada letters, or Retraite Quebec statements; those user-entered values should remain the highest-confidence input. Users who do not know the amounts may use a planning estimate based on basic eligibility inputs and the current dated parameter file.
+
+| Source mode    | Meaning                                                                  | Confidence guidance |
+| -------------- | ------------------------------------------------------------------------ | ------------------- |
+| `user_entered` | User typed a benefit amount from an official statement or their records  | High                |
+| `estimated`    | RetireOps estimated the value from wizard inputs and source parameters   | Medium or Low       |
+| `defaulted`    | RetireOps used a conservative placeholder because inputs were incomplete | Low                 |
+
+Estimate-assisted entry is a convenience path, not an entitlement determination. Wizard copy must say that actual CPP/QPP, OAS, or GIS amounts may differ based on contribution history, residency record, income, application status, and government processing.
+
+Minimum wizard variables for estimate-assisted entry:
+
+| Benefit | Minimum inputs                                                                                     | Source refs                                                                                                            |
+| ------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| CPP/QPP | Province/Quebec routing, current age, CPP/QPP start age, expected amount at 65 or fallback percent | Rules in this file; 2026 maximums/YMPE/YAMPE in [`18-pensions-2026.md`](./18-pensions-2026.md)                         |
+| OAS     | Current age, OAS start age, years resident in Canada after age 18                                  | OAS residency/deferral rules in this file; quarterly 2026 amounts in [`18-pensions-2026.md`](./18-pensions-2026.md)    |
+| GIS     | Marital status, spouse OAS/Allowance status, estimated income excluding OAS                        | GIS eligibility/income rules in this file; 2026 maximums and cutoffs in [`18-pensions-2026.md`](./18-pensions-2026.md) |
+
+<a id="ympe-proxy"></a>
+
+### YMPE-Proxy Estimator (CPP/QPP Fallback)
+
+When a user does not have their Service Canada Statement of Contributions (or Retraite Québec Statement of Participation), the wizard offers a 2-question fallback that produces a `MEDIUM`-confidence estimate. The two questions map to a coarse fraction of the 2026 CPP/QPP maximum retirement pension at age 65.
+
+**Inputs**
+
+| Question                                       | Field              | Domain                                    |
+| ---------------------------------------------- | ------------------ | ----------------------------------------- |
+| Years contributed to CPP/QPP (age 18 to today) | `yearsContributed` | integer 0..47                             |
+| Lifetime earnings level vs. YMPE               | `earningsBucket`   | `BELOW_AVG` \| `AVG_OR_ABOVE` \| `AT_MAX` |
+
+**Bucket-to-percentage mapping**
+
+| Bucket         | Description                         | Percentage of max |
+| -------------- | ----------------------------------- | ----------------- |
+| `BELOW_AVG`    | Below-average earner (~40% of YMPE) | 0.40              |
+| `AVG_OR_ABOVE` | Average or above (~65% of YMPE)     | 0.65              |
+| `AT_MAX`       | Maximum contributor (100% of YMPE)  | 1.00              |
+
+**Formula**
+
+```
+percentageOfMax = BUCKET_TO_PCT[earningsBucket]
+baseAt65        = maxRetirementPensionAnnual × percentageOfMax × (yearsContributed / 39)
+baseAt65        = min(baseAt65, maxRetirementPensionAnnual)      // cap at 100%
+finalAmount     = adjustCPPForStartAge(baseAt65, startAge, plan) // apply start-age factor
+```
+
+The denominator `39` reflects the maximum CPP contributory period after the 8-year general drop-out (47 years from age 18–65 minus 8 drop-out years). For 2026 CPP/QPP maximums, see [`18-pensions-2026.md#2026-cpp-max-retirement-pension`](./18-pensions-2026.md#2026-cpp-max-retirement-pension) / [`#2026-qpp-max-retirement-pension`](./18-pensions-2026.md#2026-qpp-max-retirement-pension).
+
+**Confidence:** `MEDIUM`. The SOC-amount path (user enters their statement amount) is `HIGH` confidence.
+
+**Pure-function contract:** The estimator must not call `Date.now`, `Math.random`, or perform I/O. All inputs are passed explicitly; the `plan: 'CPP' | 'QPP'` discriminator is computed by the caller from `about_you.province`.
+
+<a id="qpp-vs-cpp-routing"></a>
+
+### QPP vs. CPP Routing
+
+Province routing for the estimator and UI labeling:
+
+| Province                   | Plan label | Parameter source                                                  |
+| -------------------------- | ---------- | ----------------------------------------------------------------- |
+| `QC` (Quebec)              | QPP        | `QPP_2026` from `packages/shared/src/benefits-parameters/2026.ts` |
+| All other Canadian regions | CPP        | `CPP_2026` from same module                                       |
+
+The 2026 CPP and QPP maximum retirement pensions coincide ($1,507.65/month), but the parameter lookup is plan-routed because:
+
+1. Future years may diverge (Quebec's November 2025 fiscal update legislated a 2026-only QPP base-rate cut — see [`18-pensions-2026.md`](./18-pensions-2026.md) §"What Changed Between 2025 and 2026").
+2. Citation provenance must reflect the correct plan anchor so the report layer renders the right citation chip.
+
+Cross-province contributors (mixed CPP+QPP careers) are out of scope for v4.7 — the wizard labels by current province only; a v4.8+ feature may add a cross-plan checkbox.
+
+```typescript
+type BenefitSourceMode = 'user_entered' | 'estimated' | 'defaulted';
+type BenefitEstimateConfidence = 'high' | 'medium' | 'low';
+
+interface BenefitValueSource {
+  mode: BenefitSourceMode;
+  confidence: BenefitEstimateConfidence;
+  citation: string; // Source-of-truth anchor, for example docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74
+  note?: string;
+}
+```
+
 ```typescript
 interface GovernmentBenefits {
   cpp: {
@@ -274,6 +376,7 @@ interface GovernmentBenefits {
     start_age: number; // 60-70
     actual_annual: number; // After adjustment
     survivor_benefit?: number; // If applicable
+    value_source?: BenefitValueSource;
   };
 
   oas: {
@@ -282,11 +385,13 @@ interface GovernmentBenefits {
     full_entitlement: number; // Before clawback
     clawback: number; // Recovery tax
     net_amount: number; // After clawback
+    value_source?: BenefitValueSource;
   };
 
   gis?: {
     eligible: boolean;
     amount: number;
+    value_source?: BenefitValueSource;
   };
 
   owner: 'primary' | 'spouse';
@@ -448,7 +553,7 @@ breakeven_65_vs_70 = (cpp_70 × years_from_70) vs (cpp_65 × years_from_65)
 
 ## Implementation Notes
 
-1. **User input:** Allow users to enter their expected CPP/QPP from Service Canada/Retraite Quebec statements, or estimate based on typical percentages of maximum.
+1. **User input:** Allow users to enter their expected CPP/QPP from Service Canada/Retraite Quebec statements. If the user does not know the amount, provide an estimate-helper path using the minimum variables in "Benefit Intake Source Modes"; store the resulting source mode, confidence, and citation.
 
 2. **Start age selection:** Provide clear interface to select start ages (60-70 for CPP, 65-70 for OAS) with visual impact on benefits.
 
