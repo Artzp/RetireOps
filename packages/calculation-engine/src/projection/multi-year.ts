@@ -2,6 +2,7 @@
  * Multi-Year Projection Engine
  * @see docs/source-of-truth/08-projection-engine.md
  */
+import { randomUUID } from 'node:crypto';
 import type {
   ProjectionInput,
   ProjectionOutput,
@@ -265,7 +266,7 @@ export function computeSingleProjection(input: ProjectionInput): ProjectionOutpu
   }
 
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     input,
     yearlyResults,
     legacyTargetMet,
@@ -724,7 +725,7 @@ export function computeCoupleProjection(input: ProjectionInput): CoupleProjectio
     spousePersonRows.some((r) => r.provenance !== undefined);
 
   return {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     input,
     yearlyResults,
     legacyTargetMet: coupleLegacyTargetMet,
