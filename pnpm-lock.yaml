@@ -28,6 +28,25 @@ overrides:
 importers:
 
   .:
+    optionalDependencies:
+      '@tailwindcss/oxide-darwin-arm64':
+        specifier: 4.3.0
+        version: 4.3.0
+      '@tailwindcss/oxide-darwin-x64':
+        specifier: 4.3.0
+        version: 4.3.0
+      '@tailwindcss/oxide-linux-arm64-gnu':
+        specifier: 4.3.0
+        version: 4.3.0
+      '@tailwindcss/oxide-linux-x64-gnu':
+        specifier: 4.3.0
+        version: 4.3.0
+      '@tailwindcss/oxide-linux-x64-musl':
+        specifier: 4.3.0
+        version: 4.3.0
+      '@tailwindcss/oxide-win32-x64-msvc':
+        specifier: 4.3.0
+        version: 4.3.0
     devDependencies:
       '@eslint/js':
         specifier: ^9.0.0
@@ -3001,7 +3020,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide-darwin-x64@4.3.0:
@@ -3010,7 +3028,6 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide-freebsd-x64@4.3.0:
@@ -3037,7 +3054,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide-linux-arm64-musl@4.3.0:
@@ -3055,7 +3071,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide-linux-x64-musl@4.3.0:
@@ -3064,7 +3079,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide-wasm32-wasi@4.3.0:
@@ -3097,7 +3111,6 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@tailwindcss/oxide@4.3.0:
