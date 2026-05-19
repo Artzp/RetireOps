@@ -10,6 +10,7 @@ import type { CoupleProjectionOutput as _CoupleProjectionOutput } from './multi-
 type _CoupleResult = _CoupleProjectionOutput;
 
 // Re-export as used type (workaround for ESLint unused-vars rule on type-only usage)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _assertCoupleType = (x: unknown): x is _CoupleResult => true;
 void _assertCoupleType;
 import { getCurrentYear, type ProjectionInput, type SpouseInput } from '@retireops/shared';

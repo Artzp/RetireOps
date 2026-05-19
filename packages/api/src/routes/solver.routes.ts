@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/require-await */
 import {
@@ -36,7 +35,7 @@ solverRoutes.post('/', async (req: Request, res: Response, next: NextFunction) =
     if (!parsed.success) {
       throw new UnprocessableEntityError(
         'Solver input validation failed',
-        parsed.error.errors.map((e) => ({
+        parsed.error.issues.map((e) => ({
           path: e.path.join('.'),
           message: e.message,
         }))

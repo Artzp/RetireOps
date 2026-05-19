@@ -324,7 +324,17 @@ describe('Projection Validation Schemas', () => {
         name: 'Base Case',
         modifications: {},
       });
-      expect(result.modifications).toEqual({});
+      // Zod 4: .partial() preserves declared defaults on the underlying schema,
+      // so parsing {} fills in every field's default. (Zod 3 returned {} here.)
+      // scenarioModificationSchema is currently unused outside its own tests; if
+      // a production consumer is added, build a defaults-free partial then.
+      expect(result.modifications).toMatchObject({
+        lifeExpectancy: 95,
+        cppStartAge: 65,
+        oasStartAge: 65,
+        inflationRate: 0.025,
+        investmentReturn: 0.05,
+      });
     });
   });
 

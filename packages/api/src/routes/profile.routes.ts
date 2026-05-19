@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   Router,
   type Request,
@@ -21,7 +21,7 @@ profileRoutes.use(requireAuth);
 // Validation schemas
 const patchStepSchema = z.object({
   currentStep: z.number().int().min(0).max(8),
-  data: z.union([z.record(z.unknown()), z.array(z.unknown())]),
+  data: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
 });
 
 const stepParamSchema = z.object({

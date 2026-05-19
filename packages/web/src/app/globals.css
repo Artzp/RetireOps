@@ -1,6 +1,134 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  /* Container utility (Tailwind 4 doesn't auto-generate .container — use these tokens
+     plus the explicit class rule below to preserve the v3 `container` behavior). */
+
+  /* Border radius scale */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-card: 1rem;
+  --radius-button: 1.5rem;
+
+  /* Font families — values reference next/font output CSS vars (set in lib/fonts.ts) */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-mono), monospace;
+  --font-display: var(--font-manrope), Manrope, sans-serif;
+
+  /* shadcn semantic palette (consumed via :root vars below) */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Financial chart colors (literal HSL — no CSS var indirection) */
+  --color-success: hsl(142, 76%, 36%);
+  --color-success-foreground: hsl(0, 0%, 100%);
+  --color-warning: hsl(38, 92%, 50%);
+  --color-warning-foreground: hsl(0, 0%, 100%);
+  --color-chart-1: hsl(221, 83%, 53%);
+  --color-chart-2: hsl(142, 76%, 36%);
+  --color-chart-3: hsl(38, 92%, 50%);
+  --color-chart-4: hsl(280, 65%, 60%);
+  --color-chart-5: hsl(346, 77%, 49%);
+
+  /* DS-01 Editorial Stability palette (42 tokens) */
+  --color-ds-background: hsl(var(--ds-background));
+  --color-ds-surface: hsl(var(--ds-surface));
+  --color-ds-surface-raised: hsl(var(--ds-surface-raised));
+  --color-ds-surface-overlay: hsl(var(--ds-surface-overlay));
+  --color-ds-surface-container: hsl(var(--ds-surface-container));
+  --color-ds-surface-bright: hsl(var(--ds-surface-bright));
+  --color-ds-surface-dim: hsl(var(--ds-surface-dim));
+  --color-ds-primary: hsl(var(--ds-primary));
+  --color-ds-on-primary: hsl(var(--ds-on-primary));
+  --color-ds-primary-container: hsl(var(--ds-primary-container));
+  --color-ds-on-primary-container: hsl(var(--ds-on-primary-container));
+  --color-ds-primary-fixed: hsl(var(--ds-primary-fixed));
+  --color-ds-primary-fixed-dim: hsl(var(--ds-primary-fixed-dim));
+  --color-ds-on-primary-fixed: hsl(var(--ds-on-primary-fixed));
+  --color-ds-secondary: hsl(var(--ds-secondary));
+  --color-ds-on-secondary: hsl(var(--ds-on-secondary));
+  --color-ds-secondary-container: hsl(var(--ds-secondary-container));
+  --color-ds-on-secondary-container: hsl(var(--ds-on-secondary-container));
+  --color-ds-secondary-fixed: hsl(var(--ds-secondary-fixed));
+  --color-ds-secondary-fixed-dim: hsl(var(--ds-secondary-fixed-dim));
+  --color-ds-tertiary: hsl(var(--ds-tertiary));
+  --color-ds-on-tertiary: hsl(var(--ds-on-tertiary));
+  --color-ds-tertiary-container: hsl(var(--ds-tertiary-container));
+  --color-ds-on-tertiary-container: hsl(var(--ds-on-tertiary-container));
+  --color-ds-tertiary-fixed: hsl(var(--ds-tertiary-fixed));
+  --color-ds-tertiary-fixed-dim: hsl(var(--ds-tertiary-fixed-dim));
+  --color-ds-on-background: hsl(var(--ds-on-background));
+  --color-ds-on-surface: hsl(var(--ds-on-surface));
+  --color-ds-on-surface-variant: hsl(var(--ds-on-surface-variant));
+  --color-ds-error: hsl(var(--ds-error));
+  --color-ds-on-error: hsl(var(--ds-on-error));
+  --color-ds-error-container: hsl(var(--ds-error-container));
+  --color-ds-on-error-container: hsl(var(--ds-on-error-container));
+  --color-ds-outline: hsl(var(--ds-outline));
+  --color-ds-outline-variant: hsl(var(--ds-outline-variant));
+  --color-ds-inverse-surface: hsl(var(--ds-inverse-surface));
+  --color-ds-inverse-on-surface: hsl(var(--ds-inverse-on-surface));
+  --color-ds-inverse-primary: hsl(var(--ds-inverse-primary));
+  --color-ds-shadow: hsl(var(--ds-shadow));
+  --color-ds-scrim: hsl(var(--ds-scrim));
+  --color-ds-warm-brown: hsl(var(--ds-warm-brown));
+  --color-ds-warm-brown-container: hsl(var(--ds-warm-brown-container));
+
+  /* Accordion animation (Radix) — keyframes defined outside @theme; theme vars
+     register the `animate-accordion-down` / `animate-accordion-up` utilities. */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* Tailwind 4 drops the auto `border-color` inheritance from v3 base; restore
+   so existing `border` utility renders with the design-token border color
+   without needing `border-border` on every element. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: hsl(var(--border));
+  }
+}
 
 @layer base {
   :root {
@@ -118,6 +246,17 @@
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+  }
+}
+
+/* Tailwind v3 `container` utility — v4 doesn't auto-generate this from theme
+   so we re-create the v3 config (center: true, padding: 2rem, 2xl: 1400px). */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  width: 100%;
+  @media (min-width: 1400px) {
+    max-width: 1400px;
   }
 }
 

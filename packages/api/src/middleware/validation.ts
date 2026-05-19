@@ -12,21 +12,18 @@ export function validate(schemas: ValidateOptions) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (schemas.body) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         req.body = await schemas.body.parseAsync(req.body);
       }
       if (schemas.query) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        req.query = await schemas.query.parseAsync(req.query);
+        req.query = (await schemas.query.parseAsync(req.query)) as typeof req.query;
       }
       if (schemas.params) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        req.params = await schemas.params.parseAsync(req.params);
+        req.params = (await schemas.params.parseAsync(req.params)) as typeof req.params;
       }
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        next(new ValidationError('Validation failed', error.errors));
+        next(new ValidationError('Validation failed', error.issues));
       } else {
         next(error);
       }

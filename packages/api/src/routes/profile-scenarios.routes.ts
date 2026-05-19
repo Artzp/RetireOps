@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
 /**
  * Profile Scenarios Routes
  *
@@ -153,7 +153,7 @@ profileScenariosRoutes.get(
     try {
       const scenario = await profileScenarioService.getProfileScenario(
         req.user!.id,
-        req.params.id!
+        req.params.id as string
       );
       res.json({ success: true, data: scenario });
     } catch (error) {
@@ -173,7 +173,7 @@ profileScenariosRoutes.patch(
     try {
       const scenario = await profileScenarioService.renameProfileScenario(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body.name
       );
       res.json({ success: true, data: scenario });
@@ -192,7 +192,10 @@ profileScenariosRoutes.post(
   validate({ params: scenarioIdParam }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const clone = await profileScenarioService.cloneProfileScenario(req.user!.id, req.params.id!);
+      const clone = await profileScenarioService.cloneProfileScenario(
+        req.user!.id,
+        req.params.id as string
+      );
       res.status(201).json({ success: true, data: clone });
     } catch (error) {
       next(error);
@@ -213,7 +216,10 @@ profileScenariosRoutes.post(
   validate({ params: scenarioIdParam }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const scenario = await profileScenarioService.runSingleScenario(req.user!.id, req.params.id!);
+      const scenario = await profileScenarioService.runSingleScenario(
+        req.user!.id,
+        req.params.id as string
+      );
       res.json({ success: true, data: scenario });
     } catch (error) {
       next(error);
@@ -233,7 +239,7 @@ profileScenariosRoutes.post(
     try {
       const preview = await profileScenarioService.previewScenarioDecisions(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body as Partial<ScenarioDecisions>
       );
       res.json({ success: true, data: preview });
@@ -252,7 +258,7 @@ profileScenariosRoutes.delete(
   validate({ params: scenarioIdParam }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await profileScenarioService.deleteProfileScenario(req.user!.id, req.params.id!);
+      await profileScenarioService.deleteProfileScenario(req.user!.id, req.params.id as string);
       res.json({ success: true });
     } catch (error) {
       next(error);
@@ -273,7 +279,7 @@ profileScenariosRoutes.put(
     try {
       await profileScenarioService.updateScenarioDecisions(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body as Partial<ScenarioDecisions>
       );
       res.json({ success: true });
@@ -303,7 +309,7 @@ profileScenariosRoutes.post(
     try {
       const result = await scenarioMonteCarloService.submitScenarioMonteCarloJob(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body
       );
       res.status(202).json({ success: true, data: result });
@@ -320,8 +326,8 @@ profileScenariosRoutes.get(
     try {
       const result = await scenarioMonteCarloService.getScenarioMonteCarloJobStatus(
         req.user!.id,
-        req.params.id!,
-        req.params.jobId!
+        req.params.id as string,
+        req.params.jobId as string
       );
       res.json({ success: true, data: result });
     } catch (error) {
@@ -337,8 +343,8 @@ profileScenariosRoutes.delete(
     try {
       await scenarioMonteCarloService.cancelScenarioMonteCarloJob(
         req.user!.id,
-        req.params.id!,
-        req.params.jobId!
+        req.params.id as string,
+        req.params.jobId as string
       );
       res.status(204).send();
     } catch (error) {
@@ -365,7 +371,7 @@ profileScenariosRoutes.post(
     try {
       const result = await scenarioBacktestService.runScenarioBacktest(
         req.user!.id,
-        req.params.id!
+        req.params.id as string
       );
       res.json({ success: true, data: result });
     } catch (error) {
@@ -386,7 +392,7 @@ profileScenariosRoutes.get(
     try {
       const result = await scenarioBacktestService.getScenarioBacktest(
         req.user!.id,
-        req.params.id!
+        req.params.id as string
       );
       res.json({ success: true, data: result });
     } catch (error) {
@@ -415,7 +421,7 @@ profileScenariosRoutes.post(
     try {
       const result = await scenarioStressTestService.runScenarioStressTest(
         req.user!.id,
-        req.params.id!
+        req.params.id as string
       );
       res.json({ success: true, data: result });
     } catch (error) {
@@ -439,7 +445,7 @@ profileScenariosRoutes.get(
   validate({ params: scenarioIdParam }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await analyzeScenario(req.user!.id, req.params.id!);
+      const result = await analyzeScenario(req.user!.id, req.params.id as string);
       res.json({ success: true, data: result });
     } catch (error) {
       next(error);

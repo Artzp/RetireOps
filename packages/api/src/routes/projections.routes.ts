@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-misused-promises, @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unsafe-argument */
 import { createHash } from 'node:crypto';
 import {
   Router,
@@ -196,7 +196,10 @@ projectionRoutes.get(
   validate({ params: idParamSchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const projection = await projectionService.getProjection(req.user!.id, req.params.id!);
+      const projection = await projectionService.getProjection(
+        req.user!.id,
+        req.params.id as string
+      );
       res.json({
         success: true,
         data: projection,
@@ -215,7 +218,7 @@ projectionRoutes.put(
     try {
       const projection = await projectionService.updateProjection(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body
       );
       res.json({
@@ -234,7 +237,7 @@ projectionRoutes.delete(
   validate({ params: idParamSchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await projectionService.deleteProjection(req.user!.id, req.params.id!);
+      await projectionService.deleteProjection(req.user!.id, req.params.id as string);
       res.json({
         success: true,
         message: 'Projection deleted successfully',
@@ -251,7 +254,7 @@ projectionRoutes.get(
   validate({ params: idParamSchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const projectionId = req.params.id!;
+      const projectionId = req.params.id as string;
       const cacheKey = `optimization:${projectionId}`;
 
       // Check Redis cache first
@@ -311,7 +314,7 @@ projectionRoutes.get(
   validate({ params: idParamSchema }),
   async (req, res, next) => {
     try {
-      const projectionId = req.params.id!;
+      const projectionId = req.params.id as string;
       const cacheKey = `backtest:${projectionId}`;
 
       const cached = await getCache<BacktestResult>(cacheKey);
@@ -367,7 +370,10 @@ projectionRoutes.post(
   validate({ params: idParamSchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const projection = await projectionService.runCalculation(req.user!.id, req.params.id!);
+      const projection = await projectionService.runCalculation(
+        req.user!.id,
+        req.params.id as string
+      );
       res.json({
         success: true,
         message: 'Calculation complete',
@@ -395,7 +401,7 @@ projectionRoutes.post(
     try {
       const result = await projectionService.submitMonteCarloJob(
         req.user!.id,
-        req.params.id!,
+        req.params.id as string,
         req.body
       );
       res.status(202).json({ success: true, data: result });
@@ -413,8 +419,8 @@ projectionRoutes.get(
     try {
       const result = await projectionService.getMonteCarloJobStatus(
         req.user!.id,
-        req.params.id!,
-        req.params.jobId!
+        req.params.id as string,
+        req.params.jobId as string
       );
       res.json({ success: true, data: result });
     } catch (error) {
@@ -429,7 +435,11 @@ projectionRoutes.delete(
   validate({ params: mcJobParamSchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      await projectionService.cancelMonteCarloJob(req.user!.id, req.params.id!, req.params.jobId!);
+      await projectionService.cancelMonteCarloJob(
+        req.user!.id,
+        req.params.id as string,
+        req.params.jobId as string
+      );
       res.status(204).send();
     } catch (error) {
       next(error);

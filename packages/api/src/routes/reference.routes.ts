@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 import {
   Router,
   type Request,
@@ -51,7 +50,7 @@ referenceRoutes.get(
     try {
       const data = await referenceService.getProvincialTaxTable(
         Number(req.params.year),
-        req.params.province ?? ''
+        (req.params.province as string | undefined) ?? ''
       );
       res.json({
         success: true,

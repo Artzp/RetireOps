@@ -79,10 +79,8 @@ const registerSchema = z
       .regex(/\d/, 'Password must contain at least one number'),
     confirmPassword: z.string(),
     acceptDisclaimer: z.literal(true, {
-      errorMap: () => ({
-        message:
-          'Please confirm you understand RetireOps is planning software, not financial, tax, or legal advice.',
-      }),
+      message:
+        'Please confirm you understand RetireOps is planning software, not financial, tax, or legal advice.',
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {

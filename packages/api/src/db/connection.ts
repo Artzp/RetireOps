@@ -38,6 +38,7 @@ export async function testConnection(): Promise<boolean> {
     await db.selectFrom('users').select('id').limit(1).execute();
     logger.info('Database connection successful');
     return true;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // Table might not exist yet, try a simpler query
     try {

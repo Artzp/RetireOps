@@ -22,8 +22,9 @@ import { z } from 'zod';
  * map between these three spellings. LIRA is intentionally excluded — LIRA is
  * contribution-locked and cannot be a withdrawal target in this phase.
  */
-export const WithdrawalOverrideField = z.enum(['rrsp', 'rrif', 'lif', 'tfsa', 'nonreg']);
-export type WithdrawalOverrideField = z.infer<typeof WithdrawalOverrideField>;
+const WITHDRAWAL_OVERRIDE_FIELD_VALUES = ['rrsp', 'rrif', 'lif', 'tfsa', 'nonreg'] as const;
+export const WithdrawalOverrideField = z.enum(WITHDRAWAL_OVERRIDE_FIELD_VALUES);
+export type WithdrawalOverrideField = (typeof WITHDRAWAL_OVERRIDE_FIELD_VALUES)[number];
 
 /**
  * Override owner discriminator. Distinguishes which person an override applies to
@@ -31,8 +32,9 @@ export type WithdrawalOverrideField = z.infer<typeof WithdrawalOverrideField>;
  * was added) parse with the default 'primary', preserving their behavior — every
  * Phase 1 override was implicitly primary-scoped.
  */
-export const OverrideOwner = z.enum(['primary', 'spouse']);
-export type OverrideOwner = z.infer<typeof OverrideOwner>;
+const OVERRIDE_OWNER_VALUES = ['primary', 'spouse'] as const;
+export const OverrideOwner = z.enum(OVERRIDE_OWNER_VALUES);
+export type OverrideOwner = (typeof OVERRIDE_OWNER_VALUES)[number];
 
 // -------------------------------------------------------------------------
 // Zod Schema (source of truth — type is inferred)

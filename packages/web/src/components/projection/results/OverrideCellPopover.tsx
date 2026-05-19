@@ -168,7 +168,7 @@ function validateAmount(amountStr: string): { amount: number | null; error: stri
 interface InputBlockProps {
   /** Rendered above the input in dual-input mode only. */
   amountLabel?: string;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
   amount: string;
   onAmountChange: (v: string) => void;
   applyForward: boolean;

@@ -383,6 +383,7 @@ function absorbPipelineResult(
 }
 
 // Type-only helper to derive the pipeline state shape for absorbPipelineResult.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyPipelineState(): {
   currentRRSP: number;
   currentRRIF: number;

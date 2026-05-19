@@ -154,8 +154,15 @@ export function SolverForm({ prefillData, onSubmit, isSubmitting, error }: Solve
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors: errorsRaw },
   } = methods;
+
+  // The schema is a `z.discriminatedUnion('mode', [...])`, so RHF + zodResolver 5
+  // types `errors` as a union and TS can't see per-variant fields at access sites.
+  // The UI gates each field render on `mode === '...'`, so at runtime only the
+  // active variant's errors are populated. Cast to a flat shape for ergonomic
+  // access — runtime safety unchanged.
+  const errors = errorsRaw as Record<string, { message?: string } | undefined>;
 
   useEffect(() => {
     reset(buildDefaultValues(mode, prefillData));
@@ -164,8 +171,8 @@ export function SolverForm({ prefillData, onSubmit, isSubmitting, error }: Solve
   const provinceValue = watch('province');
   const cppStartAgeValue = watch('cppStartAge');
   const oasStartAgeValue = watch('oasStartAge');
-  const inflationDec = watch('inflationRate') as number | undefined;
-  const nominalDec = watch('investmentReturnRate') as number | undefined;
+  const inflationDec = watch('inflationRate');
+  const nominalDec = watch('investmentReturnRate');
   const realDec =
     typeof inflationDec === 'number' &&
     typeof nominalDec === 'number' &&
@@ -179,7 +186,11 @@ export function SolverForm({ prefillData, onSubmit, isSubmitting, error }: Solve
     reset(buildDefaultValues(newMode, prefillData));
   }
 
-  async function handleFormSubmit(values: ReturnType<typeof buildDefaultValues>) {
+  // SubmitHandler expects one variant of the discriminated union, but values
+  // arrive runtime-narrowed by `mode`; the handler reads each field via
+  // `(values as any).field` semantics anyway. Cast preserves runtime safety.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function handleFormSubmit(values: any) {
     const currentAge = Number(values.currentAge);
 
     // Derive dateOfBirth from currentAge — mid-year approximation (±6 months accuracy)
