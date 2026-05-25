@@ -27,7 +27,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.0",
+    "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
     "@vitest/coverage-v8": "^4.0.0",
     "rimraf": "^6.1.3",
