@@ -19,7 +19,7 @@
   "dependencies": {
     "@retireops/calculation-engine": "workspace:*",
     "@retireops/shared": "workspace:*",
-    "bullmq": "^5.1.0",
+    "bullmq": "^5.77.3",
     "ioredis": "^5.10.1",
     "kysely": "^0.29.0",
     "pg": "^8.20.0",
