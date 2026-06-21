@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 'use client';
 
 import { Check } from 'lucide-react';
@@ -22,29 +19,50 @@ export function ProfileStepperSidebar({
 }: ProfileStepperSidebarProps) {
   return (
     <>
-      {/* Mobile horizontal dot bar */}
-      <div className="flex md:hidden items-center gap-2 px-4 py-3 border-b border-ds-outline-variant bg-ds-surface">
-        {steps.map((step, index) => {
-          const isCurrent = index === currentStepIndex;
-          const isCompleted =
-            index < currentStepIndex || (index !== currentStepIndex && visitedSteps.has(index));
-          return (
-            <button
-              key={step.id}
-              type="button"
-              onClick={isCompleted ? () => onStepClick(index) : undefined}
-              className={cn(
-                'w-2.5 h-2.5 rounded-full transition-colors',
-                isCurrent
-                  ? 'bg-ds-primary'
-                  : isCompleted
-                    ? 'bg-ds-primary-container'
-                    : 'bg-ds-outline-variant pointer-events-none'
-              )}
-              aria-label={step.label}
-            />
-          );
-        })}
+      {/* Mobile progress bar — full-width strip above the content */}
+      <div className="md:hidden shrink-0 border-b border-ds-outline-variant bg-ds-surface px-4 pt-3 pb-3">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <span className="whitespace-nowrap text-xs font-semibold text-ds-primary">
+            Step {currentStepIndex + 1} of {steps.length}
+          </span>
+          <span className="truncate text-xs font-medium text-ds-on-background">
+            {steps[currentStepIndex]?.label}
+          </span>
+        </div>
+        <nav aria-label="Profile steps" className="flex items-center gap-1.5">
+          {steps.map((step, index) => {
+            const isCurrent = index === currentStepIndex;
+            const isCompleted =
+              index < currentStepIndex || (index !== currentStepIndex && visitedSteps.has(index));
+            const isReachable = isCompleted;
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={isReachable ? () => onStepClick(index) : undefined}
+                disabled={!isReachable}
+                aria-label={`Step ${index + 1}: ${step.label}`}
+                aria-current={isCurrent ? 'step' : undefined}
+                className={cn(
+                  'group flex-1 rounded py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ds-primary',
+                  isReachable ? 'cursor-pointer' : 'cursor-default'
+                )}
+              >
+                <span
+                  className={cn(
+                    'block h-1.5 rounded-full transition-colors',
+                    isCurrent || index < currentStepIndex
+                      ? 'bg-ds-primary'
+                      : isCompleted
+                        ? 'bg-ds-primary-container'
+                        : 'bg-ds-outline-variant',
+                    isReachable && 'group-hover:bg-ds-primary'
+                  )}
+                />
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* Desktop sidebar */}

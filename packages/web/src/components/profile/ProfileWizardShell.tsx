@@ -344,7 +344,7 @@ export function ProfileWizardShell() {
       // D-03: Capture current step's live form values before state update
       const currentSlug = activeSteps[currentStepIndex]?.slug as StepSlug | undefined;
       if (currentSlug) {
-        const stepData = methods.getValues(currentSlug as keyof ProfileFormValues);
+        const stepData = methods.getValues(currentSlug);
         // D-01/D-04: Fire bootstrap PATCH with target step index
         // D-07: Silent fire-and-forget — navigation continues regardless
         void patchProfileStep(currentSlug, stepData, targetIndex).catch(() => {
@@ -432,7 +432,7 @@ export function ProfileWizardShell() {
         </header>
 
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Stepper (handles both desktop sidebar and mobile dots) */}
           <ProfileStepperSidebar
             steps={activeSteps}
@@ -443,7 +443,7 @@ export function ProfileWizardShell() {
 
           {/* Content area */}
           <div className="flex-1 overflow-y-auto flex flex-col">
-            <div className="max-w-2xl mx-auto px-8 py-8 flex-1 w-full">
+            <div className="max-w-2xl mx-auto px-4 py-6 sm:px-8 sm:py-8 flex-1 w-full">
               {/* Step heading */}
               <h1 className="text-[20px] font-bold text-ds-on-background">
                 {currentStepConfig.label}
@@ -504,13 +504,13 @@ export function ProfileWizardShell() {
 
             {/* Run Projection error */}
             {runError && (
-              <div className="mx-8 mb-2 p-3 rounded-md bg-red-50 border border-ds-error text-sm text-ds-error">
+              <div className="mx-4 sm:mx-8 mb-2 p-3 rounded-md bg-red-50 border border-ds-error text-sm text-ds-error">
                 {runError}
               </div>
             )}
 
             {/* Footer nav */}
-            <div className="flex items-center justify-between px-8 py-4 border-t border-ds-outline-variant bg-ds-surface shrink-0">
+            <div className="flex items-center justify-between px-4 sm:px-8 py-4 border-t border-ds-outline-variant bg-ds-surface shrink-0">
               <Button
                 type="button"
                 variant="outline"
