@@ -282,6 +282,20 @@ export interface FrontendSummary {
    * Undefined when no warnings were raised.
    */
   ledgerWarnings?: LedgerWarning[];
+  /**
+   * Audit D-02: lifetime household pension-split tax savings, surfaced from the
+   * engine couple summary (CoupleProjectionSummary.totalPensionSplitTaxSavings).
+   * Undefined on single projections and on cached result_data that predates this
+   * field — the UI falls back to a client-side row sum for the latter.
+   */
+  totalPensionSplitSavings?: number;
+  /**
+   * Audit D-02: lifetime bracket-fill withdrawals (primary + spouse) summed
+   * server-side from the same rows the transformer emits. Always set on newly
+   * computed projections (0 when the optimizer never fired); undefined only on
+   * cached result_data that predates this field.
+   */
+  totalBracketFillWithdrawals?: number;
 }
 
 export interface FrontendYearlyResult {
@@ -806,6 +820,16 @@ export function transformToFrontendOutput(
   const projectionRows = transformToProjectionYearRows(output, decisions);
   const terminalTaxEvents = output.terminalTaxEvents;
 
+  // Audit D-02: lifetime bracket-fill aggregate computed server-side from the
+  // rows the transformer already emits, so engine-side refinements propagate to
+  // the displayed total instead of being re-derived in the client.
+  const totalBracketFillWithdrawals = Math.round(
+    projectionRows.reduce(
+      (sum, r) => sum + (r.bracketFillWithdrawal ?? 0) + (r.spouseBracketFillWithdrawal ?? 0),
+      0
+    )
+  );
+
   if (isCoupleProjectionOutput(output)) {
     const yearlyResults = output.yearlyResults.map((year) => transformCoupleYearlyResult(year));
     // M005/S05: flatten ledger warnings across every year + both persons.
@@ -815,6 +839,7 @@ export function transformToFrontendOutput(
       ...(y.spouse.ledgerWarnings ?? []),
     ]);
     const summary = transformCoupleSummary(output.summary, lifeExpectancy);
+    summary.totalBracketFillWithdrawals = totalBracketFillWithdrawals;
     if (aggregateWarnings.length > 0) {
       summary.ledgerWarnings = aggregateWarnings;
     }
@@ -828,6 +853,7 @@ export function transformToFrontendOutput(
 
   const yearlyResults = output.yearlyResults.map((year) => transformYearlyResult(year));
   const summary = transformSummary(output.summary, lifeExpectancy);
+  summary.totalBracketFillWithdrawals = totalBracketFillWithdrawals;
   // Mirror the couple path: flatten per-year ledger warnings into the summary
   // so SummaryTab's Projection Warnings card surfaces over-contribution alerts
   // for single projections too (closes the v4.4 deferral gap).
@@ -999,11 +1025,17 @@ function mapSingleYearToRow(
       row.bracketFillWithdrawal = personYear.bracketFillWithdrawal;
     }
   }
-  // M005/S06: over-contribution penalty surfaced for single-person flows
+  // M005/S06: over-contribution penalty surfaced for single-person flows.
+  // Audit C-02: round here like every other penalty path — the transformer is
+  // the single rounding layer (engine emits raw values).
   if (year.overContributionPenalty !== undefined) {
     const p = year.overContributionPenalty;
     if (p.rrsp > 0 || p.tfsa > 0 || p.fhsa > 0) {
-      row.overContributionPenalty = p;
+      row.overContributionPenalty = {
+        rrsp: roundPenaltyAmount(p.rrsp),
+        tfsa: roundPenaltyAmount(p.tfsa),
+        fhsa: roundPenaltyAmount(p.fhsa),
+      };
     }
   }
 
@@ -1198,6 +1230,12 @@ function mapCoupleYearToRow(
 /**
  * Transform a couple yearly result - uses primary person's details with household totals
  */
+/**
+ * Single rounding layer for over-contribution penalties (audit C-02).
+ * The engine emits raw (unrounded) penalty values; the transformer rounds to
+ * cents exactly once — couple paths SUM the raw per-person values first, then
+ * round, so household totals never accumulate per-person rounding error.
+ */
 function roundPenaltyAmount(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -1318,6 +1356,10 @@ function transformCoupleSummary(
     averageEffectiveTaxRate: summary.averageEffectiveTaxRate,
     fundedStatus: summary.fundedStatus,
     remediationPlan: summary.remediationPlan,
+    // Audit D-02: surface the engine-computed lifetime pension-split savings
+    // (couple-projection-summary.ts sums pensionSplitTaxSavings across years)
+    // so the UI no longer re-derives it client-side.
+    totalPensionSplitSavings: Math.round(summary.totalPensionSplitTaxSavings),
     ...(summary.grossEstate !== undefined ? { grossEstate: Math.round(summary.grossEstate) } : {}),
     ...(summary.terminalTaxes !== undefined
       ? { terminalTaxes: Math.round(summary.terminalTaxes) }

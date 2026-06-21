@@ -51,13 +51,27 @@ export const RRIF_MINIMUM_RATE_95_PLUS = 0.2;
 
 /**
  * Look up the CRA-prescribed RRIF minimum withdrawal rate for a given age.
- * @see docs/source-of-truth/02-account-types.md — RRIF-002
- * @see CRA IT-500R / Income Tax Act, Schedule 2
+ *
+ * For ages below the tabled floor (65) the CRA pre-71 general factor `1/(90−age)`
+ * applies — it is NEVER zero (Income Tax Regulation 7308(4)). The table values
+ * for ages 65–70 are exactly `1/(90−age)`, so extending the formula below 65 is
+ * continuous; ages 71–94 use the separately prescribed table; 95+ is fixed 20%.
+ *
+ * This sub-65 path is only reachable through the younger-spouse election
+ * (RRIF-005/RRIF-008): a normal RRIF holder has no mandatory minimum until the
+ * year after conversion (RRIF-001, age ~72), so the owner's own age is never
+ * below 65 here. The election must REDUCE the forced minimum, not eliminate it
+ * (audit B-05).
+ *
+ * @see docs/source-of-truth/02-account-types.md — RRIF-002, RRIF-007, RRIF-008
+ * @see CRA IT-500R / Income Tax Act, Income Tax Regulation 7308(4)
  */
 export function getRRIFMinimumRate(age: number): number {
-  if (age < 65) return 0;
   if (age >= 95) return RRIF_MINIMUM_RATE_95_PLUS;
-  return RRIF_MINIMUM_RATES[age] ?? 0;
+  // Ages below the tabled floor use the CRA pre-71 factor 1/(90−age), never zero
+  // (RRIF-007). Floor the age at 1 to avoid a non-sensical divide for invalid input.
+  if (age < 65) return 1 / (90 - Math.max(age, 1));
+  return RRIF_MINIMUM_RATES[age] ?? 1 / (90 - age);
 }
 
 /**
@@ -109,56 +123,11 @@ export const OAS_CLAWBACK_THRESHOLDS = {
   },
 } as const;
 
-/**
- * @deprecated(v4.8+) See `packages/shared/src/benefits-parameters/<year>.ts`
- * for the v4.5 citation-anchored parameter convention. This 2024 record is
- * kept for legacy engine reads; engine migration deferred to v4.8+.
- *
- * Government Benefit Amounts (2024)
- * @see docs/source-of-truth/05-government-benefits.md
- */
-export const BENEFIT_AMOUNTS_2024 = {
-  cpp: {
-    maxMonthlyAt65: 1364.6,
-    maxAnnualAt65: 16375,
-    averageMonthly: 815,
-  },
-  oas: {
-    maxMonthlyAge65To74: 713,
-    maxAnnualAge65To74: 8560,
-    maxMonthlyAge75Plus: 785,
-    maxAnnualAge75Plus: 9420,
-  },
-  gis: {
-    maxMonthlySingle: 1065,
-    maxAnnualSingle: 12780,
-    maxMonthlyMarried: 1060,
-    incomeThresholdSingle: 21624,
-    incomeThresholdMarriedBoth: 28560,
-    incomeThresholdMarriedOneOAS: 51840,
-  },
-} as const;
-
-/**
- * @deprecated(v4.8+) See `packages/shared/src/benefits-parameters/2026.ts#OAS_2026.q1`
- * and `OAS_2026.q2` for the citation-anchored 2026 values. This multi-year
- * record is kept for legacy engine reads; engine migration deferred to v4.8+.
- */
-export const OAS_BENEFIT_AMOUNTS = {
-  2024: BENEFIT_AMOUNTS_2024.oas,
-  2025: {
-    maxMonthlyAge65To74: 740.09,
-    maxAnnualAge65To74: 8881,
-    maxMonthlyAge75Plus: 814.1,
-    maxAnnualAge75Plus: 9769,
-  },
-  2026: {
-    maxMonthlyAge65To74: 742.31,
-    maxAnnualAge65To74: 8908,
-    maxMonthlyAge75Plus: 816.54,
-    maxAnnualAge75Plus: 9798,
-  },
-} as const;
+// REMOVED (audit Batch 7, 2026-06-10): the deprecated `BENEFIT_AMOUNTS_2024`
+// and `OAS_BENEFIT_AMOUNTS` constants were deleted once grep showed zero
+// non-test consumers. The benefits engine reads the citation-anchored
+// `packages/shared/src/benefits-parameters/2026.ts` (OAS_2026 / GIS_2026 /
+// CPP_2026) since audit findings A-01/A-02/A-03 landed.
 
 /**
  * Dividend Tax Rates

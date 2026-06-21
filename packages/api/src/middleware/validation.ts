@@ -21,12 +21,16 @@ export function validate(schemas: ValidateOptions) {
         req.params = (await schemas.params.parseAsync(req.params)) as typeof req.params;
       }
       next();
+      return;
     } catch (error) {
+      // Audit C-12: explicit return after next() — Express 5 best practice to
+      // guarantee no code runs after the request has been handed off.
       if (error instanceof z.ZodError) {
         next(new ValidationError('Validation failed', error.issues));
-      } else {
-        next(error);
+        return;
       }
+      next(error);
+      return;
     }
   };
 }

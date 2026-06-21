@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import type { PercentileBandResultContract } from '@retireops/shared';
@@ -33,7 +32,7 @@ const formatYAxis = (value: number): string => {
   if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
   if (value <= -1_000_000) return `-$${(Math.abs(value) / 1_000_000).toFixed(1)}M`;
   if (value <= -1_000) return `-$${(Math.abs(value) / 1_000).toFixed(0)}K`;
-  return `$${value}`;
+  return `$${String(value)}`;
 };
 
 function FanChartTooltip({ active, payload, label }: TooltipContentProps) {

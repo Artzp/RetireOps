@@ -36,6 +36,15 @@ export interface OASTrimContext {
   cppIncome: number;
   oasIncome: number;
   rrifWithdrawal: number; // mandatory minimum (untrimmable)
+  /**
+   * Bracket-fill top-up withdrawal (untrimmable here). Bracket-fill runs BEFORE
+   * the trim and is folded into taxable rrifIncome in the real tax input
+   * (calculate-year.ts:508 / calculate-person-year.ts:615), so it must be
+   * counted as income or the trim under-estimates and declines to fire (B-01).
+   */
+  bracketFillWithdrawal: number;
+  /** Other taxable income (line 23600 gross-income component). */
+  otherIncome: number;
   meltdownRRSPWithdrawal: number;
   incomeThreshold: number;
   /** Drawdown order; trim walks this in reverse. */
@@ -50,12 +59,21 @@ export function applyOASClawbackAvoidanceTrim(
   state: OASTrimState,
   context: OASTrimContext
 ): OASTrimState {
+  // Income definition must match the actual tax-input assembly so the trim's
+  // clawback test agrees with the tax engine. Per docs/source-of-truth/04-tax-engine.md
+  // "Step 1: Calculate Gross Income": pension, RRIF/RRSP withdrawals (which absorb
+  // bracket-fill top-ups), CPP, OAS, taxable capital gains, and other_taxable_income
+  // all count; TFSA withdrawals do not. bracketFillWithdrawal and otherIncome were
+  // previously omitted, so the trim under-counted income and silently failed to fire
+  // when bracket-fill was active (B-01).
   const estimate = (): number =>
     (context.isRetired ? 0 : context.employmentIncome) +
     context.pensionIncome +
     context.cppIncome +
     context.oasIncome +
     context.rrifWithdrawal +
+    context.bracketFillWithdrawal +
+    context.otherIncome +
     state.additionalRRIFWithdrawal +
     state.rrspWithdrawal +
     context.meltdownRRSPWithdrawal +

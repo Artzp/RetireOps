@@ -11,15 +11,18 @@ import {
   calculateCombinedCPP,
   getCPPAdjustmentTable,
   calculateCPPBreakEvenAge,
-  estimateCPPAt65,
   isEligibleForCPP,
   isMaxDeferral,
 } from './cpp.js';
-import { CPP_ADJUSTMENT_FACTORS, BENEFIT_AMOUNTS_2024 } from '@retireops/shared';
+import { CPP_ADJUSTMENT_FACTORS } from '@retireops/shared';
+import { CPP_2026 } from '@retireops/shared/benefits';
 
 const { EARLY_REDUCTION_PER_MONTH, LATE_INCREASE_PER_MONTH } = CPP_ADJUSTMENT_FACTORS;
 
-const MAX_CPP_AT_65 = BENEFIT_AMOUNTS_2024.cpp.maxAnnualAt65;
+// Engine survivor/combined caps now default to the citation-anchored 2026 maximum
+// per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
+// (1_507.65 × 12 = 18_091.80), replacing the deprecated 2024 maximum ($16,375).
+const MAX_CPP_AT_65 = CPP_2026.maxRetirementPensionAnnual;
 
 describe('CPP/QPP Benefit Calculations', () => {
   describe('calculateCPPAdjustmentFactor', () => {
@@ -256,30 +259,6 @@ describe('CPP/QPP Benefit Calculations', () => {
     });
   });
 
-  describe('estimateCPPAt65', () => {
-    it('should calculate percentage of maximum', () => {
-      // 50% of max
-      const estimated = estimateCPPAt65(50);
-      expect(estimated).toBeCloseTo(MAX_CPP_AT_65 * 0.5, 2);
-    });
-
-    it('should return full max for 100%', () => {
-      const estimated = estimateCPPAt65(100);
-      expect(estimated).toBe(MAX_CPP_AT_65);
-    });
-
-    it('should return 0 for 0%', () => {
-      const estimated = estimateCPPAt65(0);
-      expect(estimated).toBe(0);
-    });
-
-    it('should handle typical average values', () => {
-      // Average Canadian gets about 50-60% of max
-      const estimated = estimateCPPAt65(55);
-      expect(estimated).toBeCloseTo(MAX_CPP_AT_65 * 0.55, 2);
-    });
-  });
-
   describe('isEligibleForCPP', () => {
     it('should return true for age 60 and above', () => {
       expect(isEligibleForCPP(60)).toBe(true);
@@ -345,9 +324,28 @@ describe('CPP/QPP Benefit Calculations', () => {
       const survivorBenefit = calculateCPPSurvivorBenefit(14000);
       expect(survivorBenefit).toBe(8400); // 60% of $14,000
 
-      // Combined with own $10,000 benefit (capped at max CPP of $16,375)
+      // Combined with own $10,000 benefit (capped at the 2026 max CPP of $18,091.80)
+      // per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
       const combined = calculateCombinedCPP(10000, survivorBenefit);
-      expect(combined).toBe(16375); // Capped at max CPP annual amount
+      expect(combined).toBeCloseTo(18091.8, 2); // Capped at 2026 max CPP annual amount
+    });
+
+    it('A-03 regression: combined CPP defaults cap to the 2026 maximum (18091.80), not 2024 (16375)', () => {
+      // A survivor whose own + survivor CPP lands between the old 2024 cap (16375)
+      // and the 2026 cap (18091.80) must NOT be clipped at 16375 on the live path.
+      // per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
+      const combined = calculateCombinedCPP(12000, 5000); // 17000 total
+      expect(combined).toBe(17000); // below 2026 cap → uncapped (would have been clipped to 16375)
+      expect(combined).toBeGreaterThan(16375);
+    });
+
+    it('A-03 regression: survivor benefit cap derives from the 2026 maximum', () => {
+      // With a very large deceased benefit the survivor amount is capped at 60% of
+      // the 2026 maximum (18091.80 × 0.6 = 10855.08), not 60% of 16375 (9825).
+      // per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
+      const survivor = calculateCPPSurvivorBenefit(100000);
+      expect(survivor).toBeCloseTo(18091.8 * 0.6, 2);
+      expect(survivor).toBeCloseTo(10855.08, 2);
     });
   });
 });

@@ -57,6 +57,9 @@ function loadConfig(): Config {
   const result = configSchema.safeParse(normalizeEnv(process.env));
 
   if (!result.success) {
+    // console (not winston logger) is intentional here: utils/logger.ts imports
+    // this config module, so importing the logger back would be circular — and
+    // these errors fire before any logger could be configured anyway (audit C-06).
     console.error('Invalid environment configuration:');
     console.error(result.error.format());
     process.exit(1);

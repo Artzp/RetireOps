@@ -74,13 +74,18 @@ describe('VR-EST worked example — single person (M004/S04 T06 PARITY)', () => 
     expect(finalRow.pensionIncome).toBeCloseTo(40_000, 2);
     expect(finalRow.rrifWithdrawal).toBeCloseTo(42_550, 2);
     expect(finalRow.totalIncome).toBeCloseTo(82_550, 2);
-    expect(finalRow.taxesPaid).toBeCloseTo(14_872.318874999999, 2);
+    // 2026 tax-table refresh (audit A-09/A-10): in-year tax recomputed on the
+    // doc-19 2026 federal+Ontario credits/brackets. Hand-reconciled:
+    //   fed net 10024.008 (BPA 16452, age 9208, brackets 58522×1.02-indexed, 0.14)
+    //   + ON net 4622.608375 (age 6342, pension 1796) = 14646.616375.
+    expect(finalRow.taxesPaid).toBeCloseTo(14_646.616375, 2);
 
     // Terminal-return fields
     expect(event.realizedCapitalGain).toBeCloseTo(0, 2);
     expect(event.grossEstate).toBeCloseTo(857_450, 2);
-    expect(event.terminalTaxes).toBeCloseTo(199_394.32246800003, 2);
-    expect(event.netEstate).toBeCloseTo(658_055.677532, 2);
+    // 2026 refresh: deemed-disposition terminal tax recomputed on 2026 credits/brackets.
+    expect(event.terminalTaxes).toBeCloseTo(198_829.014968, 2);
+    expect(event.netEstate).toBeCloseTo(658_620.985032, 2);
     expect(event.wasSpouseRolloverApplied).toBe(false);
   });
 
@@ -96,8 +101,9 @@ describe('VR-EST worked example — single person (M004/S04 T06 PARITY)', () => 
     expect(summary.netEstate).toBeDefined();
 
     expect(summary.grossEstate!).toBeCloseTo(857_450, 2);
-    expect(summary.terminalTaxes!).toBeCloseTo(199_394.32246800003, 2);
-    expect(summary.netEstate!).toBeCloseTo(658_055.677532, 2);
+    // 2026 tax-table refresh (audit A-09/A-10) — see VR-EST-RRSP-INCLUSION-001 above.
+    expect(summary.terminalTaxes!).toBeCloseTo(198_829.014968, 2);
+    expect(summary.netEstate!).toBeCloseTo(658_620.985032, 2);
 
     // Deemed disposition + realized capital gain rows (from the single event)
     const event = events![0]!;

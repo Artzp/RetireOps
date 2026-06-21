@@ -27,23 +27,10 @@ export const projectionQueue = new Queue('projection-calculation', {
   },
 });
 
-export const scenarioComparisonQueue = new Queue('scenario-comparison', {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000,
-    },
-    removeOnComplete: {
-      age: 3600,
-      count: 100,
-    },
-    removeOnFail: {
-      age: 86400,
-    },
-  },
-});
+// NOTE: the former 'scenario-comparison' queue was removed (audit C-07).
+// Scenario comparison is synchronous in the API
+// (packages/api/src/services/profile-scenario.service.ts compareProfileScenarios);
+// nothing ever enqueued to the queue and its worker unconditionally threw.
 
 export const monteCarloQueue = new Queue('monte-carlo', {
   connection: redisConnection,

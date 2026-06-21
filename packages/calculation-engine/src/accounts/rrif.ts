@@ -14,15 +14,21 @@ export function calculateRRIFMinimumWithdrawal(balance: number, age: number): nu
 }
 
 /**
- * Calculate RRIF minimum withdrawal using younger spouse's age
- * @see docs/source-of-truth/02-account-types.md - RRIF-005
+ * Calculate RRIF minimum withdrawal using younger spouse's age.
+ *
+ * Uses min(ownerAge, spouseAge) for the rate lookup. When the younger age is
+ * below the tabled floor (e.g. spouse 60), the CRA pre-71 factor 1/(90−age)
+ * applies via getRRIFMinimumRate — the election REDUCES the forced minimum, it
+ * does NOT eliminate it (audit B-05; spouse 60 → 1/30 ≈ 3.333%).
+ *
+ * @see docs/source-of-truth/02-account-types.md - RRIF-005, RRIF-007, RRIF-008
  */
 export function calculateRRIFMinimumWithYoungerSpouse(
   balance: number,
   ownerAge: number,
   spouseAge: number
 ): number {
-  // Use younger age for lower minimum
+  // Use younger age for lower (never zero) minimum
   const ageToUse = Math.min(ownerAge, spouseAge);
   return calculateRRIFMinimumWithdrawal(balance, ageToUse);
 }

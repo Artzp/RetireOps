@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -126,7 +125,7 @@ export function ChartsTab({ data, displayMode = 'nominal' }: ChartsTabProps) {
   const formatYAxis = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value}`;
+    return `$${String(value)}`;
   };
   const formatTooltipCurrency = (value: unknown) =>
     formatCurrency(typeof value === 'number' ? value : 0);
@@ -249,11 +248,13 @@ export function ChartsTab({ data, displayMode = 'nominal' }: ChartsTabProps) {
                     outerRadius={80}
                     innerRadius={40}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    }
                     labelLine={false}
                   >
                     {allocationData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${String(index)}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip formatter={formatTooltipCurrency} />

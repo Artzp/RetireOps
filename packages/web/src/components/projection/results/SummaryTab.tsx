@@ -73,6 +73,10 @@ interface SummaryTabProps {
       remediationPlan?: RemediationPlan | null;
       // M005/S06: aggregate ledger warnings from the contribution-room ledger
       ledgerWarnings?: LedgerWarning[];
+      // Audit D-02: server-side lifetime aggregates from the projection
+      // transformer. Optional only for cached result_data that predates them.
+      totalPensionSplitSavings?: number;
+      totalBracketFillWithdrawals?: number;
     };
     yearlyResults: Array<{
       year?: number;
@@ -81,7 +85,6 @@ interface SummaryTabProps {
       // Couple-specific fields
       spouseAge?: number;
       householdNetWorth?: number;
-      pensionSplitSavings?: number;
     }>;
     /** M005/P3: typed rows used for per-year pension-split chart + totals */
     projectionRows?: ProjectionYearRow[];
@@ -120,27 +123,31 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
   const retirementNetWorth =
     retirementStartIndex >= 0 ? yearlyResults[retirementStartIndex]?.totalNetWorth || 0 : 0;
 
-  // Calculate total pension split savings for couples.
-  // M005/P3: prefer the typed projectionRows (pensionSplitTaxSavings) since the
-  // legacy yearlyResults shape never carried this field.
+  // Lifetime pension-split savings for couples.
+  // Audit D-02: the projection transformer now exposes the engine-side aggregate
+  // (summary.totalPensionSplitSavings). The client-side row reduce is kept ONLY
+  // as a legacy fallback for cached result_data that predates the field.
   const projectionRows = data.projectionRows ?? [];
   const pensionSplitRows = isCouple
     ? projectionRows.filter((r) => (r.pensionSplitPercentage ?? 0) > 0)
     : [];
   const totalPensionSplitSavings = isCouple
-    ? pensionSplitRows.reduce((sum, r) => sum + (r.pensionSplitTaxSavings ?? 0), 0) ||
-      yearlyResults.reduce((sum, y) => sum + (y.pensionSplitSavings || 0), 0)
+    ? (summary.totalPensionSplitSavings ??
+      pensionSplitRows.reduce((sum, r) => sum + (r.pensionSplitTaxSavings ?? 0), 0))
     : 0;
   const pensionSplitChartData = pensionSplitRows.map((r) => ({
     year: r.year,
     splitPct: Math.round((r.pensionSplitPercentage ?? 0) * 1000) / 10, // percent, one decimal
   }));
-  // M005/P5: lifetime bracket-fill withdrawals (client-side sum — the engine
-  // does not yet expose a summary aggregate; follow-up tracked post-M005).
-  const totalBracketFillWithdrawals = projectionRows.reduce(
-    (sum, r) => sum + (r.bracketFillWithdrawal ?? 0) + (r.spouseBracketFillWithdrawal ?? 0),
-    0
-  );
+  // Lifetime bracket-fill withdrawals.
+  // Audit D-02: served by the transformer (summary.totalBracketFillWithdrawals);
+  // the row reduce is the legacy-cache fallback only.
+  const totalBracketFillWithdrawals =
+    summary.totalBracketFillWithdrawals ??
+    projectionRows.reduce(
+      (sum, r) => sum + (r.bracketFillWithdrawal ?? 0) + (r.spouseBracketFillWithdrawal ?? 0),
+      0
+    );
 
   const successRate = summary.probabilityOfSuccess ?? 0;
   const isSuccessful = successRate >= 80;

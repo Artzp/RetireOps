@@ -15,6 +15,7 @@
 import type { AccountOwner, MaritalStatus } from '@retireops/shared';
 
 import { calculateGovernmentBenefits } from '../../benefits/index.js';
+import { getOASIndexationYears } from '../../tax/indexing.js';
 
 /** Inputs to compute pass-3 OAS / GIS. */
 export interface BenefitsPass3Input {
@@ -103,6 +104,12 @@ export function recalcBenefitsPass3(
     yearsFromStart: input.yearsFromProjectionStart,
     inflationRate: input.inflationRate,
     oasClawbackThreshold: input.oasClawbackThreshold,
+    // Calendar-anchored OAS gross indexation (audit A-08): same 2026 base anchor
+    // as the clawback threshold, derived from the projection start year.
+    oasIndexationYears: getOASIndexationYears(
+      input.year,
+      input.year - input.yearsFromProjectionStart
+    ),
     ...(input.spouseReceivingOAS !== undefined && {
       spouseReceivingOAS: input.spouseReceivingOAS,
     }),

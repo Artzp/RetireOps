@@ -453,6 +453,10 @@ describe('Scenario Corpus', () => {
       // Expected values recaptured 2026-03-28 (post capital-gains + GIS-pass-3 fix)
       // Net worth is higher than pre-fix because: (1) GIS income now included for low-income
       // years, and (2) non-reg withdrawals use 50% capital gains inclusion (not 100% ordinary).
+      // Re-centered 2026-06-10 for the A-01/A-02 migration: gross OAS rose to the
+      // anchored 2026 Q2 amount ($8,916.60/yr) and GIS now uses the 2026 maxima /
+      // 25% couple rate / two-band earnings exemption — both lift retained net worth
+      // by a few hundred dollars at the OAS-start years (net worth at 65: 680465 → 681037).
       const result = runSingleProjection(PERSONA_STANDARD_RETIREE);
 
       expect(result.yearlyResults.length).toBeGreaterThan(15);
@@ -460,30 +464,41 @@ describe('Scenario Corpus', () => {
       // Year of retirement (age 65, tolerance 500)
       const yearAt65 = result.yearlyResults.find((r) => r.age === 65);
       expect(yearAt65, 'projection must include age 65').toBeDefined();
-      expectWithinTolerance(yearAt65!.totalNetWorth, 680465, 500, 'net worth at 65');
+      expectWithinTolerance(yearAt65!.totalNetWorth, 681037, 500, 'net worth at 65');
       expectWithinTolerance(yearAt65!.rrspBalance, 562419, 500, 'rrsp at 65');
 
       // Mid-retirement (age 70, 5 years in — tolerance 2000)
       // Net worth higher than pre-fix due to GIS income and reduced tax on non-reg gains.
+      // Re-centered 2026-06-10 (A-01/A-02): five compounding years of higher OAS + 2026
+      // GIS lift this from 564695 → ~568536.
       const yearAt70 = result.yearlyResults.find((r) => r.age === 70);
       expect(yearAt70, 'projection must include age 70').toBeDefined();
-      expectWithinTolerance(yearAt70!.totalNetWorth, 564695, 2000, 'net worth at 70');
+      expectWithinTolerance(yearAt70!.totalNetWorth, 568536, 2000, 'net worth at 70');
       // Pre-71 RRSP withdrawals are reported via rrifWithdrawal field
       expect(yearAt70!.rrifWithdrawal).toBeGreaterThan(0);
 
       // Late retirement (age 75, 10 years in — tolerance 5000)
+      // Re-centered 2026-06-10 (A-01/A-02): 364731 → ~370248.
       const yearAt75 = result.yearlyResults.find((r) => r.age === 75);
       expect(yearAt75, 'projection must include age 75').toBeDefined();
-      expectWithinTolerance(yearAt75!.totalNetWorth, 364731, 5000, 'net worth at 75');
+      expectWithinTolerance(yearAt75!.totalNetWorth, 370248, 5000, 'net worth at 75');
 
       // Very late (age 80, 15 years in — tolerance 5000)
+      // Re-centered 2026-06-10 (A-01/A-02): 84864 → ~92737.
       const yearAt80 = result.yearlyResults.find((r) => r.age === 80);
       expect(yearAt80, 'projection must include age 80').toBeDefined();
-      expectWithinTolerance(yearAt80!.totalNetWorth, 84864, 5000, 'net worth at 80');
+      expectWithinTolerance(yearAt80!.totalNetWorth, 92737, 5000, 'net worth at 80');
     });
 
     it('PERSONA_RRIF_AGE: Alberta retiree near RRIF conversion age, TFSA grows through retirement', () => {
       // Expected values recaptured 2026-03-28 (post capital-gains + GIS-pass-3 fix)
+      // Re-centered 2026-06-10 for the A-01/A-02 migration (anchored 2026 OAS Q2
+      // amount + 2026 GIS parameters).
+      // Re-centered 2026-06-10 for audit A-08 (OAS gross now indexes on the
+      // calendar clock, not age − oasStartAge): this persona is age 70 at the
+      // 2026 projection start, so at year 2026 OAS = the un-indexed 2026 base
+      // ($8,916.60) instead of the old code's 5-years-from-start over-indexing →
+      // net worth at 70 474267 → 473306.
       const result = runSingleProjection(PERSONA_RRIF_AGE);
 
       expect(result.yearlyResults.length).toBeGreaterThan(10);
@@ -491,7 +506,7 @@ describe('Scenario Corpus', () => {
       // First year (age 70, within 1 year of start — tolerance 500)
       const yearAt70 = result.yearlyResults.find((r) => r.age === 70);
       expect(yearAt70, 'projection must include age 70').toBeDefined();
-      expectWithinTolerance(yearAt70!.totalNetWorth, 473700, 500, 'net worth at 70');
+      expectWithinTolerance(yearAt70!.totalNetWorth, 473306, 500, 'net worth at 70');
 
       // RRIF conversion year (age 71, tolerance 500)
       const yearAt71 = result.yearlyResults.find((r) => r.age === 71);
@@ -501,9 +516,12 @@ describe('Scenario Corpus', () => {
       expectWithinTolerance(yearAt71!.rrifBalance, 348791, 2000, 'rrif balance at 71');
 
       // Mid-retirement (age 75, 5 years in — tolerance 5000)
+      // A-08: age-75 OAS now indexes 5 calendar years past 2026 (the persona's
+      // year-75 is 2031), not 10 years from the age-65 start, so OAS gross is
+      // lower than the old over-indexed value → net worth at 75 365976 → 360639.
       const yearAt75 = result.yearlyResults.find((r) => r.age === 75);
       expect(yearAt75, 'projection must include age 75').toBeDefined();
-      expectWithinTolerance(yearAt75!.totalNetWorth, 365976, 5000, 'net worth at 75');
+      expectWithinTolerance(yearAt75!.totalNetWorth, 360639, 5000, 'net worth at 75');
 
       // TFSA balance growing as RRIF withdrawals fill TFSA room
       expect(yearAt75!.tfsaBalance).toBeGreaterThan(yearAt70!.tfsaBalance);
@@ -527,9 +545,13 @@ describe('Scenario Corpus', () => {
       expectWithinTolerance(yearAt65!.totalNetWorth, 410425, 2000, 'net worth at 65');
 
       // RRSP drawn down via pre-71 withdrawals (age 70, tolerance 5000)
+      // A-08: OAS at 65 starts in 2029 (3 calendar years past the 2026 base), so
+      // OAS gross is correctly indexed up vs the old age−oasStartAge clock (which
+      // gave 0 years at the start age) → more OAS income, fewer registered
+      // withdrawals, higher net worth at 70: 259150 → 266927.
       const yearAt70 = result.yearlyResults.find((r) => r.age === 70);
       expect(yearAt70, 'projection must include age 70').toBeDefined();
-      expectWithinTolerance(yearAt70!.totalNetWorth, 259150, 5000, 'net worth at 70');
+      expectWithinTolerance(yearAt70!.totalNetWorth, 266927, 5000, 'net worth at 70');
 
       // TFSA is larger than RRSP at age 62
       expect(yearAt62!.tfsaBalance).toBeGreaterThan(yearAt62!.rrspBalance);
@@ -566,9 +588,12 @@ describe('Scenario Corpus', () => {
       // Mid-retirement (age 72 — 9 years in, tolerance 5000)
       // RRIF conversion happened at 71; RRIF minimum + prior RRSP drawdown accelerated spend.
       // Higher than pre-fix: non-reg accrued gains now taxed at 50% inclusion, not 100%.
+      // A-08: OAS at 65 starts in 2033 (7 calendar years past the 2026 base), so
+      // the old age−oasStartAge clock under-indexed OAS by 7 years; the corrected
+      // (higher) OAS income retains more portfolio → net worth at 72 367249 → 386362.
       const yearAt72 = result.yearlyResults.find((r) => r.age === 72);
       expect(yearAt72, 'projection must include age 72').toBeDefined();
-      expectWithinTolerance(yearAt72!.totalNetWorth, 367249, 5000, 'net worth at 72');
+      expectWithinTolerance(yearAt72!.totalNetWorth, 386362, 5000, 'net worth at 72');
     });
   });
 
@@ -640,6 +665,11 @@ describe('Scenario Corpus', () => {
       // years (10-year gap), Math.min(ownerAge, spouseAge) always yields the spouse's rate
       // which is lower. The actual withdrawal may exceed the minimum when income-gap
       // spending draws additional RRIF amounts — we only verify the rate invariant here.
+      //
+      // The forced-minimum floor only applies once the mandatory-minimum gate fires
+      // (owner age >= 72, RRIF-001). At age 71 (conversion year) there is no forced
+      // minimum, so any withdrawal there is purely spending-driven and not bounded by
+      // the younger-spouse rate — exclude those years from the floor assertion.
       for (const yearResult of rrifYearsInLifespan) {
         const ownerAge = yearResult.primary.age;
         // 10-year age gap: spouse age = ownerAge - 10
@@ -647,15 +677,18 @@ describe('Scenario Corpus', () => {
         const youngerSpouseMinimum =
           yearResult.primary.rrifBalance * getRRIFMinimumRate(spouseAgeThisYear);
         const ownerOnlyMinimum = yearResult.primary.rrifBalance * getRRIFMinimumRate(ownerAge);
+        // Rate invariant holds for every age the rate is defined (younger < owner).
         expect(
           youngerSpouseMinimum,
           `Younger-spouse minimum at primary age ${ownerAge} should be less than owner-only minimum (${ownerOnlyMinimum.toFixed(0)})`
         ).toBeLessThan(ownerOnlyMinimum);
-        // Actual withdrawal must be at least the younger-spouse minimum
-        expect(
-          yearResult.primary.rrifWithdrawal,
-          `RRIF withdrawal at primary age ${ownerAge} must be >= younger-spouse minimum (${youngerSpouseMinimum.toFixed(0)})`
-        ).toBeGreaterThanOrEqual(youngerSpouseMinimum);
+        // Forced-minimum floor only applies once the mandatory-minimum gate fires (age >= 72).
+        if (ownerAge >= 72) {
+          expect(
+            yearResult.primary.rrifWithdrawal,
+            `RRIF withdrawal at primary age ${ownerAge} must be >= younger-spouse minimum (${youngerSpouseMinimum.toFixed(0)})`
+          ).toBeGreaterThanOrEqual(youngerSpouseMinimum - 0.01);
+        }
       }
 
       // Specific check at the first mandatory minimum year (age 72)
@@ -663,6 +696,21 @@ describe('Scenario Corpus', () => {
       expect(yearAt72, 'projection must include primary age 72').toBeDefined();
       const ownerOnlyMinAt72 = yearAt72!.primary.rrifBalance * getRRIFMinimumRate(72);
       expect(yearAt72!.primary.rrifWithdrawal).toBeLessThan(ownerOnlyMinAt72);
+
+      // --- Audit B-05: spouse under 65 must still force a NON-ZERO minimum ---
+      // At primary age 72 the spouse is 62 (10-yr gap). The CRA pre-71 factor is
+      // 1/(90-62)=1/28~3.571%, NOT zero (RRIF-007/008). Before the B-05 fix the
+      // forced minimum here was $0, so the owner held the RRIF essentially
+      // untouched. Assert forced taxable RRIF income now appears.
+      const spouseAgeAt72 = 72 - 10; // 62, under the 65 table floor
+      const expectedYoungerMinAt72 =
+        yearAt72!.primary.rrifBalance * getRRIFMinimumRate(spouseAgeAt72);
+      expect(getRRIFMinimumRate(spouseAgeAt72)).toBeCloseTo(1 / 28, 6); // ~3.571%, never 0
+      expect(
+        yearAt72!.primary.rrifWithdrawal,
+        'B-05: forced RRIF minimum must be non-zero even with a spouse under 65'
+      ).toBeGreaterThanOrEqual(expectedYoungerMinAt72 - 0.01);
+      expect(yearAt72!.primary.rrifWithdrawal).toBeGreaterThan(0);
     });
   });
 

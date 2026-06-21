@@ -110,6 +110,11 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
 /**
  * Alias for BLENDED_HISTORICAL_RETURNS_DATASET matching ROADMAP.md SC-1 name contract.
  * Downstream phases 60-62 reference this name in their success criteria.
+ *
+ * @deprecated Use {@link BLENDED_HISTORICAL_RETURNS_DATASET} instead — it is the
+ * canonical name used throughout the codebase. This alias is kept only for
+ * public-API compatibility and may be removed in a future major version.
+ * (Audit E-05, 2026-06-10.)
  */
 export const HISTORICAL_RETURNS_1990_2025 = BLENDED_HISTORICAL_RETURNS_DATASET;
 

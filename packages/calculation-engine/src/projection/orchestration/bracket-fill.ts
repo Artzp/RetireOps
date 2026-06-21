@@ -7,7 +7,15 @@
  * when the resulting OAS clawback cost is <= the tax savings (BKF-03 gate).
  * Surplus over incomeGap is swept into TFSA room first, then non-reg.
  *
+ * SWEEP DEPOSIT TIMING (audit B-09): the surplus sweep amounts are RETURNED,
+ * not deposited here. The caller defers the deposit until AFTER applyGrowthStep
+ * so the swept amount earns no same-year growth — matching the D-18 end-of-year
+ * deposit convention used by surplus-handling.ts (allocate_surplus). Depositing
+ * pre-growth would have given the swept surplus a year of growth the routed
+ * surplus never receives.
+ *
  * @see docs/source-of-truth/07-withdrawal-strategies.md - TAX-05
+ * @see docs/source-of-truth/06-investment-engine.md - end-of-year deposit timing (D-18)
  * @see .planning/phases/63-bracket-fill-engine-surplus-sweep/63-CONTEXT.md
  *
  * CRITICAL: This module is pure. No wall-clock reads, no PRNG, no I/O.
@@ -31,6 +39,20 @@ export interface BracketFillBalances {
   currentNonReg: number;
 }
 
+/**
+ * Result of applyBracketFill. The RRSP withdrawal is applied to `balances`
+ * in place; the surplus sweep deposits are RETURNED so the caller can defer
+ * them until after applyGrowthStep (D-18 — audit B-09).
+ */
+export interface BracketFillResult {
+  /** RRSP→taxable withdrawal applied this year (0 if disabled / no fill). */
+  bracketFillWithdrawal: number;
+  /** Surplus to deposit into TFSA AFTER growth (post-growth, D-18). */
+  sweepTfsaDeposit: number;
+  /** Surplus to deposit into non-reg AFTER growth (post-growth, D-18). */
+  sweepNonRegDeposit: number;
+}
+
 export interface BracketFillInput {
   isRetired: boolean;
   config: BracketFillConfig | undefined;
@@ -46,10 +68,15 @@ export interface BracketFillInput {
 }
 
 /**
- * Apply bracket-fill withdrawal + surplus sweep. Mutates `balances` in place.
- * Returns the bracketFillWithdrawal amount (0 if disabled or no fill happened).
+ * Apply bracket-fill withdrawal + compute the surplus sweep. The RRSP
+ * withdrawal is applied to `balances` in place; the sweep TFSA/non-reg
+ * deposits are RETURNED for the caller to apply AFTER growth (D-18, audit
+ * B-09) — they are NOT deposited into `balances` here.
  */
-export function applyBracketFill(balances: BracketFillBalances, input: BracketFillInput): number {
+export function applyBracketFill(
+  balances: BracketFillBalances,
+  input: BracketFillInput
+): BracketFillResult {
   let bracketFillWithdrawal = 0;
   if (input.isRetired && input.config?.enabled && balances.currentRRSP > 0) {
     const guaranteedIncome =
@@ -83,13 +110,13 @@ export function applyBracketFill(balances: BracketFillBalances, input: BracketFi
     }
   }
 
-  // Surplus sweep (SWEEP-01, SWEEP-02, SWEEP-03)
+  // Surplus sweep (SWEEP-01, SWEEP-02, SWEEP-03). Compute the TFSA-first /
+  // non-reg-second split, but DO NOT deposit here — return the amounts so the
+  // caller applies them AFTER growth (D-18, audit B-09).
   const surplusFromBracketFill = Math.max(0, bracketFillWithdrawal - input.incomeGap);
   const tfsaRoomForSweep = input.availableTfsaContributionRoom ?? 0;
-  const tfsaDeposit = Math.min(surplusFromBracketFill, tfsaRoomForSweep);
-  const nonRegDeposit = surplusFromBracketFill - tfsaDeposit;
-  balances.currentTFSA += tfsaDeposit;
-  balances.currentNonReg += nonRegDeposit;
+  const sweepTfsaDeposit = Math.min(surplusFromBracketFill, tfsaRoomForSweep);
+  const sweepNonRegDeposit = surplusFromBracketFill - sweepTfsaDeposit;
 
-  return bracketFillWithdrawal;
+  return { bracketFillWithdrawal, sweepTfsaDeposit, sweepNonRegDeposit };
 }

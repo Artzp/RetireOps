@@ -44,6 +44,12 @@ export interface BenefitsCalculationInput {
 
   // Spouse-aware GIS calculation
   spouseReceivingOAS?: boolean;
+  /**
+   * True when the spouse receives the OAS Allowance (selects the GIS
+   * spouse-on-Allowance tier). Ignored when spouseReceivingOAS is true.
+   * @see docs/source-of-truth/18-pensions-2026.md#2026-gis-q2-spouse-on-allowance-max
+   */
+  spouseReceivingAllowance?: boolean;
 
   // Inflation (for indexing)
   yearsFromStart: number;
@@ -56,6 +62,24 @@ export interface BenefitsCalculationInput {
    * @see docs/source-of-truth/05-government-benefits.md - OAS Clawback
    */
   oasClawbackThreshold?: number;
+
+  /**
+   * Calendar years to compound OAS gross indexation, anchored to the OAS
+   * parameter base year (2026) — NOT to the person's OAS start age.
+   *
+   * The OAS gross base amount is a 2026-dollar figure (`OAS_2026.q2 × 12`), so
+   * indexation must run from calendar-year-vs-2026, the same anchor the OAS
+   * clawback threshold uses in `buildTaxYearParams`. When supplied, this
+   * overrides the legacy `age − oasStartAge` clock so OAS gross and the
+   * clawback threshold compound on a single calendar clock (audit A-08).
+   *
+   * CPP is intentionally NOT given a calendar anchor here: `expectedCPPAt65` is
+   * user-supplied at the start age, so CPP correctly indexes "in pay" from
+   * `age − cppStartAge`.
+   * @see docs/source-of-truth/18-pensions-2026.md - OAS indexation
+   * @see docs/audit/AUDIT-2026-06-10.internal.md A-08
+   */
+  oasIndexationYears?: number;
 }
 
 /**
@@ -78,9 +102,11 @@ export function calculateGovernmentBenefits(
     netIncome,
     employmentIncome,
     spouseReceivingOAS = false,
+    spouseReceivingAllowance = false,
     yearsFromStart: _yearsFromStart,
     inflationRate,
     oasClawbackThreshold,
+    oasIndexationYears,
   } = input;
 
   // CPP Calculation
@@ -105,7 +131,15 @@ export function calculateGovernmentBenefits(
 
   if (age >= oasStartAge && isEligibleForOAS(oasStartAge, yearsOfResidence)) {
     const baseOAS = calculateOASBenefit(yearsOfResidence, oasStartAge, age, year);
-    oasAmount = indexOASBenefit(baseOAS, inflationRate, Math.max(0, age - oasStartAge));
+    // OAS gross indexes on a CALENDAR clock anchored to the 2026 parameter base
+    // (audit A-08), matching the clawback-threshold anchor in buildTaxYearParams.
+    // The base amount (OAS_2026.q2 × 12) is a 2026-dollar figure, so the elapsed
+    // year count is calendar-years-past-2026 — supplied by the orchestrator as
+    // oasIndexationYears. Falls back to the legacy age − oasStartAge clock only
+    // when the orchestrator hasn't computed the calendar anchor (e.g. direct
+    // unit-level calls), preserving prior behaviour for those callers.
+    const oasYears = oasIndexationYears ?? Math.max(0, age - oasStartAge);
+    oasAmount = indexOASBenefit(baseOAS, inflationRate, oasYears);
 
     // Calculate clawback — pass the (optionally indexed) threshold so the
     // benefits engine and tax engine apply the same CRA recovery threshold
@@ -135,7 +169,8 @@ export function calculateGovernmentBenefits(
       oasNet,
       employmentIncome,
       maritalStatus,
-      spouseReceivingOAS
+      spouseReceivingOAS,
+      spouseReceivingAllowance
     );
 
     if (gisResult.isEligible) {

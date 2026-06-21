@@ -223,13 +223,16 @@ describe('Projection Engine', () => {
       expect(result.tfsaWithdrawal).toBe(0);
     });
 
-    it('should use year-aware OAS base amounts in future projection years', () => {
-      const birthdate = new Date(1959, 0, 1); // Age 65 in 2024
-
+    it('should use the citation-anchored 2026 OAS base amount for mainline years (A-01)', () => {
+      // After the A-01 migration the engine consumes a single citation-anchored
+      // 2026 Q2 amount (per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74)
+      // for all mainline projection years rather than a per-year 2024/2025/2026
+      // table. With inflation 0 and the same age, 2024 and 2026 inputs both fall
+      // back to the 2026 anchored gross of 743.05 × 12 = 8916.60.
       const result2024 = calculateYear(
         createYearInput({
           year: 2024,
-          birthdate,
+          birthdate: new Date(1959, 0, 1), // Age 65 in 2024
           retirementAge: 65,
           investmentReturn: 0,
           inflationRate: 0,
@@ -250,8 +253,8 @@ describe('Projection Engine', () => {
         })
       );
 
-      expect(result2024.oasIncome).toBeGreaterThan(0);
-      expect(result2026.oasIncome).toBeGreaterThan(result2024.oasIncome);
+      expect(result2026.oasGrossIncome).toBeCloseTo(8916.6, 2);
+      expect(result2024.oasGrossIncome).toBeCloseTo(result2026.oasGrossIncome, 6);
     });
 
     it('should currently treat pension income as flat with no bridge termination logic', () => {
@@ -850,20 +853,20 @@ describe('Projection Engine', () => {
 
       result.yearlyResults.forEach((year) => {
         expect(year.taxCalculation).toBeDefined();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
         expect(year.taxCalculation.totalTax).toBeGreaterThanOrEqual(0);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
         expect(year.taxCalculation.effectiveRate).toBeGreaterThanOrEqual(0);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
         expect(year.taxCalculation.effectiveRate).toBeLessThanOrEqual(1);
       });
 
       // Effective tax rate should generally be reasonable
-      /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands */
+      /* eslint-disable @typescript-eslint/restrict-plus-operands */
       const avgEffectiveRate =
         result.yearlyResults.reduce((sum, r) => sum + r.taxCalculation.effectiveRate, 0) /
         result.yearlyResults.length;
-      /* eslint-enable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/restrict-plus-operands */
+      /* eslint-enable @typescript-eslint/restrict-plus-operands */
       expect(avgEffectiveRate).toBeLessThan(0.4); // Less than 40% average
     });
 

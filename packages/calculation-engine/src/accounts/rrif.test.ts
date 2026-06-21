@@ -16,9 +16,20 @@ import {
 
 describe('RRIF Account Calculations', () => {
   describe('calculateRRIFMinimumWithdrawal', () => {
-    it('should return 0 for age under 65', () => {
-      expect(calculateRRIFMinimumWithdrawal(100000, 60)).toBe(0);
-      expect(calculateRRIFMinimumWithdrawal(100000, 64)).toBe(0);
+    it('should apply CRA pre-71 factor 1/(90-age) for ages below the table floor (RRIF-007, audit B-05)', () => {
+      // CRA Income Tax Regulation 7308(4): pre-71 factor is 1/(90-age), NEVER zero.
+      // age 60 -> 1/30 = 3.333%
+      expect(calculateRRIFMinimumWithdrawal(100000, 60)).toBeCloseTo(100000 / 30, 4);
+      // age 64 -> 1/26 = 3.846%
+      expect(calculateRRIFMinimumWithdrawal(100000, 64)).toBeCloseTo(100000 / 26, 4);
+    });
+
+    it('should be continuous with the table at the floor boundary (age 65 = 1/25 = 4.00%)', () => {
+      // age 64 (formula) just below age 65 (table) — table value 0.04 == 1/(90-65).
+      const at64 = calculateRRIFMinimumWithdrawal(100000, 64);
+      const at65 = calculateRRIFMinimumWithdrawal(100000, 65);
+      expect(at65).toBeCloseTo(4000, 0); // 1/25 = 4.00%
+      expect(at64).toBeLessThan(at65); // monotonic increase with age
     });
 
     it('should calculate minimum at age 72', () => {
@@ -86,6 +97,37 @@ describe('RRIF Account Calculations', () => {
       const withSpouse = calculateRRIFMinimumWithYoungerSpouse(500000, 80, 65);
       // Should save over $10,000 in forced withdrawals
       expect(withOwner - withSpouse).toBeGreaterThan(10000);
+    });
+
+    // --- Audit B-05: spouse below the table floor must NOT yield a $0 minimum ---
+    it('B-05: owner 72 / spouse 60 -> 1/(90-60) = 1/30 ~ 3.333% (NOT zero, RRIF-007/008)', () => {
+      const result = calculateRRIFMinimumWithYoungerSpouse(100000, 72, 60);
+      expect(result).toBeCloseTo(100000 / 30, 4); // ~3333.33, never 0
+      expect(result).toBeGreaterThan(0);
+    });
+
+    it('B-05: owner 72 / spouse 65 -> table rate for 65 (4.00%, unchanged behavior)', () => {
+      const result = calculateRRIFMinimumWithYoungerSpouse(100000, 72, 65);
+      expect(result).toBeCloseTo(4000, 0); // table value 0.04
+    });
+
+    it('B-05: spouse exactly 64 -> 1/26 = 3.846% (one below the floor boundary)', () => {
+      const result = calculateRRIFMinimumWithYoungerSpouse(100000, 72, 64);
+      expect(result).toBeCloseTo(100000 / 26, 4);
+      expect(result).toBeGreaterThan(0);
+    });
+
+    it('B-05: spouse exactly 71 -> table rate for 71 (5.28%, in-table boundary)', () => {
+      const result = calculateRRIFMinimumWithYoungerSpouse(100000, 75, 71);
+      // owner 75 (5.82%) > spouse 71 (5.28%): election uses the younger (71) rate
+      expect(result).toBeCloseTo(5280, 0); // table value 0.0528
+    });
+  });
+
+  // Owner-only (no election) path must keep using the owner's own table rate.
+  describe('B-05: no younger-spouse election (owner-only minimum unchanged)', () => {
+    it('owner 72 / no election -> owner table rate for 72 (5.40%)', () => {
+      expect(calculateRRIFMinimumWithdrawal(100000, 72)).toBeCloseTo(5400, 0); // 0.0540
     });
   });
 

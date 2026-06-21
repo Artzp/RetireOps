@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { YearByYearTab } from '../YearByYearTab';
+import { YearByYearTab, extractProjectionRows } from '../YearByYearTab';
 import type { ProjectionYearRow, ScenarioDecisions } from '@retireops/shared';
 
 vi.mock('@/hooks/useOverrideEditor', () => ({
@@ -27,7 +27,12 @@ vi.mock('@/lib/api/profile-scenarios', () => ({
   previewProfileScenarioDecisions: vi.fn(),
 }));
 
-import { previewProfileScenarioDecisions } from '@/lib/api/profile-scenarios';
+import {
+  previewProfileScenarioDecisions,
+  runProfileScenario,
+  updateDecisions,
+} from '@/lib/api/profile-scenarios';
+import type { ProfileScenarioDetail } from '@/types/profile-scenario';
 
 function makeRow(year: number, overrides: Partial<ProjectionYearRow> = {}): ProjectionYearRow {
   return {
@@ -200,5 +205,118 @@ describe('YearByYearTab government pension timing support', () => {
     expect(within(rows[1]).getByText('1')).toBeInTheDocument();
     expect(within(comparison).getAllByText('$300,000').length).toBeGreaterThan(0);
     expect(within(comparison).getAllByRole('button', { name: 'Apply' })).toHaveLength(5);
+  });
+
+  /**
+   * Audit D-08 — stale-response guard. isTimingSaving/isAssetSaving are
+   * independent flags, so a timing save and an asset save can be in flight
+   * concurrently; without the shared request-id guard the LAST response to
+   * land wins even when it was dispatched first.
+   */
+  it('ignores a stale timing-save response when a newer save lands after it (audit D-08)', async () => {
+    const user = userEvent.setup();
+    const onScenarioUpdated = vi.fn();
+    vi.mocked(updateDecisions).mockResolvedValue(undefined as never);
+
+    const staleResult = {
+      result_data: { projectionRows: [makeRow(2035, { householdNetWorth: 111 })] },
+    } as unknown as ProfileScenarioDetail;
+    const freshResult = {
+      result_data: { projectionRows: [makeRow(2035, { householdNetWorth: 222 })] },
+    } as unknown as ProfileScenarioDetail;
+
+    let resolveTimingRun!: (value: ProfileScenarioDetail) => void;
+    let resolveAssetRun!: (value: ProfileScenarioDetail) => void;
+    vi.mocked(runProfileScenario)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ProfileScenarioDetail>((resolve) => {
+            resolveTimingRun = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<ProfileScenarioDetail>((resolve) => {
+            resolveAssetRun = resolve;
+          })
+      );
+
+    render(
+      <YearByYearTab
+        data={{ projectionRows: [makeRow(2035, { spouseAge: 64 })] }}
+        scenarioId="scenario-1"
+        initialDecisions={{ cppStartAge: 65, oasStartAge: 65 }}
+        onScenarioUpdated={onScenarioUpdated}
+      />
+    );
+
+    // 1) Dispatch the timing save (make the draft dirty first via a preset).
+    await expandTimingPanel(user);
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Defer both to 70' }));
+    });
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Apply Timing' }));
+    });
+    expect(vi.mocked(runProfileScenario)).toHaveBeenCalledTimes(1);
+
+    // 2) While the timing run is in flight, dispatch an asset save (separate
+    //    isAssetSaving flag — its button is NOT disabled by isTimingSaving).
+    await act(async () => {
+      await user.click(screen.getAllByRole('button', { name: /Edit .* assumptions/ })[0]!);
+    });
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: 'Apply Assets' }));
+    });
+    expect(vi.mocked(runProfileScenario)).toHaveBeenCalledTimes(2);
+
+    // 3) The STALE timing response lands after the newer save started — it
+    //    must be dropped, not applied.
+    await act(async () => {
+      resolveTimingRun(staleResult);
+    });
+    expect(onScenarioUpdated).not.toHaveBeenCalled();
+
+    // 4) The newer asset response lands and is the only one applied.
+    await act(async () => {
+      resolveAssetRun(freshResult);
+    });
+    expect(onScenarioUpdated).toHaveBeenCalledTimes(1);
+    expect(onScenarioUpdated).toHaveBeenCalledWith(freshResult);
+  });
+});
+
+/**
+ * Audit D-05 — extractProjectionRows normalizes legacy cached result_data
+ * shapes (yearlyResults/years fallbacks) that predate the required
+ * householdTotalTax field, mirroring the transformer/engine definition:
+ * householdTotalTax = householdTaxesPaid = primary taxesPaid + spouse
+ * taxesPaid (OAS recovery tax tracked separately).
+ */
+describe('extractProjectionRows legacy-row normalization (audit D-05)', () => {
+  it('derives householdTotalTax for legacy rows missing it', () => {
+    const legacyRows = [
+      { year: 2030, age: 60, totalTax: 5_000, spouseTotalTax: 2_000 },
+      { year: 2031, age: 61, totalTax: 4_000 }, // single-shape: no spouse field
+      { year: 2032, age: 62 }, // degenerate legacy row: no tax fields at all
+    ];
+    const rows = extractProjectionRows({ yearlyResults: legacyRows });
+
+    expect(rows[0]?.householdTotalTax).toBe(7_000);
+    expect(rows[1]?.householdTotalTax).toBe(4_000);
+    expect(rows[2]?.householdTotalTax).toBe(0);
+  });
+
+  it('returns current-shape rows untouched (same reference, no copy)', () => {
+    const row = makeRow(2035, { householdTotalTax: 9_999, totalTax: 1, spouseTotalTax: 2 });
+    const rows = extractProjectionRows({ projectionRows: [row] });
+
+    expect(rows[0]).toBe(row);
+    expect(rows[0]?.householdTotalTax).toBe(9_999);
+  });
+
+  it('returns an empty array when no recognized array shape exists', () => {
+    expect(extractProjectionRows({})).toEqual([]);
+    expect(extractProjectionRows({ projectionRows: 'not-an-array' })).toEqual([]);
   });
 });

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 
 'use client';
@@ -284,9 +283,28 @@ function summarizeTimingOutcomes(rows: ProjectionYearRow[]): TimingOutcomeSummar
   );
 }
 
-function extractProjectionRows(resultData: Record<string, unknown>): ProjectionYearRow[] {
+// Exported for unit tests (audit D-05) — not part of the component surface.
+export function extractProjectionRows(resultData: Record<string, unknown>): ProjectionYearRow[] {
   const rows = resultData['projectionRows'] ?? resultData['yearlyResults'] ?? resultData['years'];
-  return Array.isArray(rows) ? (rows as ProjectionYearRow[]) : [];
+  if (!Array.isArray(rows)) return [];
+  // Audit D-05: legacy persisted result_data (pre-ENG-03 shapes reached via the
+  // yearlyResults/years fallbacks above) can lack fields that are required on
+  // current ProjectionYearRow, notably householdTotalTax. Fill it by mirroring
+  // the transformer/engine definition — householdTotalTax = householdTaxesPaid
+  // = primary taxesPaid + spouse taxesPaid, i.e. row.totalTax +
+  // row.spouseTotalTax; OAS recovery tax is intentionally NOT included (it is
+  // tracked separately in totalTaxIncludingOASRecovery). See
+  // packages/api/src/services/projection-transformer.ts (householdTotalTax:
+  // year.householdTaxesPaid) and calculation-engine couple-calculator.ts
+  // (householdTaxesPaid = primaryFinal.taxesPaid + spouseFinal.taxesPaid).
+  // Deliberately a targeted field-fill, not a zod parse — this runs on the
+  // render hot path for every preview comparison.
+  return (rows as ProjectionYearRow[]).map((row) => {
+    if (typeof row.householdTotalTax === 'number') return row;
+    const totalTax = typeof row.totalTax === 'number' ? row.totalTax : 0;
+    const spouseTotalTax = typeof row.spouseTotalTax === 'number' ? row.spouseTotalTax : 0;
+    return { ...row, householdTotalTax: totalTax + spouseTotalTax };
+  });
 }
 
 function compareTimingOutcomes(a: TimingOutcomeSummary, b: TimingOutcomeSummary): number {
@@ -473,6 +491,16 @@ export function YearByYearTab({
   const previousRowsRef = useRef<ProjectionYearRow[] | null>(null);
   const [highlightedCells, setHighlightedCells] = useState<Map<string, true>>(new Map());
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Audit D-08: monotonically increasing request id shared by every
+  // updateDecisions → runProfileScenario save path in this component (timing
+  // save, apply-comparison, asset save). The isTimingSaving / isAssetSaving
+  // disabled states stop same-button double-clicks, but the two flags are
+  // independent, so e.g. a timing save and an asset save can be in flight at
+  // the same time — without this guard the last response to LAND wins, even
+  // when it was dispatched first. Each handler bails after its awaits when a
+  // newer save has started, so stale results are never applied.
+  const saveRequestSeqRef = useRef(0);
 
   // -------------------------------------------------------------------------
   // PHASE 3 — handleScenarioUpdated wrapper (D-57, D-58, D-77)
@@ -732,17 +760,22 @@ export function YearByYearTab({
 
   const handleTimingSave = useCallback(async () => {
     if (!scenarioId) return;
+    const requestId = ++saveRequestSeqRef.current;
     setIsTimingSaving(true);
     previousRowsRef.current = timingRows;
     try {
       await updateDecisions(scenarioId, timingPatchFromDraft(timingDraft, isCouple));
       const updated = await runProfileScenario(scenarioId);
+      // Audit D-08: a newer save started while this one was in flight — its
+      // response supersedes this one, so drop the stale result silently.
+      if (saveRequestSeqRef.current !== requestId) return;
       handleScenarioUpdated(updated);
       toast({
         title: 'Pension timing updated',
         description: 'The scenario has been recomputed with the new timing assumptions.',
       });
     } catch {
+      if (saveRequestSeqRef.current !== requestId) return;
       previousRowsRef.current = null;
       toast({
         variant: 'destructive',
@@ -756,6 +789,7 @@ export function YearByYearTab({
 
   const handleAssetSave = useCallback(async () => {
     if (!scenarioId) return;
+    const requestId = ++saveRequestSeqRef.current;
     setIsAssetSaving(true);
     previousRowsRef.current = timingRows;
     const startYear = Number(assetDraft.applyFromYear) || selectedYear;
@@ -795,6 +829,8 @@ export function YearByYearTab({
         surplusDestination: assetDraft.surplusDestination,
       });
       const updated = await runProfileScenario(scenarioId);
+      // Audit D-08: drop the stale response if a newer save started meanwhile.
+      if (saveRequestSeqRef.current !== requestId) return;
       handleScenarioUpdated(updated);
       setIsAssetEditorOpen(false);
       toast({
@@ -802,6 +838,7 @@ export function YearByYearTab({
         description: 'The scenario has been recomputed with the revised asset settings.',
       });
     } catch {
+      if (saveRequestSeqRef.current !== requestId) return;
       previousRowsRef.current = null;
       toast({
         variant: 'destructive',
@@ -858,11 +895,14 @@ export function YearByYearTab({
   const handleApplyComparison = useCallback(
     async (preset: TimingPreset) => {
       if (!scenarioId) return;
+      const requestId = ++saveRequestSeqRef.current;
       setIsTimingSaving(true);
       previousRowsRef.current = timingRows;
       try {
         await updateDecisions(scenarioId, timingPatchForPreset(preset, isCouple, timingDraft));
         const updated = await runProfileScenario(scenarioId);
+        // Audit D-08: drop the stale response if a newer save started meanwhile.
+        if (saveRequestSeqRef.current !== requestId) return;
         handleScenarioUpdated(updated);
         setTimingDraft((prev) => ({
           ...prev,
@@ -873,6 +913,7 @@ export function YearByYearTab({
           description: `${preset.label} timing has been saved to this scenario.`,
         });
       } catch {
+        if (saveRequestSeqRef.current !== requestId) return;
         previousRowsRef.current = null;
         toast({
           variant: 'destructive',
@@ -1011,7 +1052,7 @@ export function YearByYearTab({
         <WithdrawalReasonPopover
           reasons={cellReasons}
           row={reasonRow}
-          triggerLabel={`${label} ${year}`}
+          triggerLabel={`${label} ${String(year)}`}
         >
           ?
         </WithdrawalReasonPopover>
@@ -1027,7 +1068,7 @@ export function YearByYearTab({
       );
     }
 
-    const editAriaLabel = `Edit ${label} ${year} - current value ${formatCurrency(value)}`;
+    const editAriaLabel = `Edit ${label} ${String(year)} - current value ${formatCurrency(value)}`;
 
     return (
       <span className="inline-flex items-center justify-end gap-0.5 w-full">
@@ -1042,7 +1083,7 @@ export function YearByYearTab({
           <OverrideCellPopover
             year={year}
             field={field}
-            label={`${label} — ${year}`}
+            label={`${label} — ${String(year)}`}
             currentDisplayValue={value}
             activeOverride={activeOverride}
             clampInfo={clampInfo}
@@ -1152,8 +1193,8 @@ export function YearByYearTab({
     // in-scope:    "Inspect {label} {year} — {formattedValue}"
     // out-of-scope: "Inspect {label} {year}" (no value announced)
     const ariaLabel = inScope
-      ? `Inspect ${label} ${year} — ${displayValue}`
-      : `Inspect ${label} ${year}`;
+      ? `Inspect ${label} ${String(year)} — ${displayValue}`
+      : `Inspect ${label} ${String(year)}`;
 
     // UI-SPEC §Color: bg-accent/20 for in-scope (inspectable), bg-accent/10 for out-of-scope (lighter)
     const hoverBg = inScope ? 'hover:bg-accent/20' : 'hover:bg-accent/10';
@@ -1212,7 +1253,7 @@ export function YearByYearTab({
           <PopoverTrigger asChild>
             <button
               type="button"
-              aria-label={`Inspect ${label} ${year}`}
+              aria-label={`Inspect ${label} ${String(year)}`}
               aria-haspopup="dialog"
               aria-expanded={isOpen}
               className="hidden w-full cursor-pointer justify-end rounded-sm hover:bg-accent/20 focus-visible:ring-2 focus-visible:ring-ds-primary/50 focus-visible:ring-offset-1 lg:inline-flex"
@@ -1320,7 +1361,7 @@ export function YearByYearTab({
             }}
             year={year}
             field={field}
-            label={`${label} — ${year}`}
+            label={`${label} — ${String(year)}`}
             currentDisplayValue={0}
             onSave={async () => {
               /* read-only/placeholder — no save path */

@@ -51,30 +51,32 @@ function makeYearInput(overrides?: Partial<YearInput>): YearInput {
 describe('Bracket Fill (TAX-05) — Phase 63', () => {
   /** @see TEST-01 — exact bracket-space fill with guaranteed income below ceiling */
   it('TEST-01: bracketFillWithdrawal equals bracketCeiling − guaranteedIncome', () => {
-    // With guaranteed income = 0 and no OAS clawback risk (57375 < 95323 threshold),
-    // the engine fills from $0 to the 2026 bottom bracket ceiling of $57375 (rate 14%).
+    // With guaranteed income = 0 and no OAS clawback risk (58522 < 95323 threshold),
+    // the engine fills from $0 to the 2026 bottom bracket ceiling of $58522 (rate 14%).
+    // 2026 tax-table refresh (audit A-09): bottom-bracket ceiling = 57375×1.02→58522.
     // RRSP has $300k — enough to cover the full fill.
     const input = makeYearInput({
       bracketFill: { enabled: true },
     });
     const result = calculateYear(input);
 
-    // 2026 bracket[0]: { min: 0, max: 57375, rate: 0.14 }
-    // guaranteedIncome = 0, bracketSpace = 57375, no clawback risk → fills fully
-    expect(result.bracketFillWithdrawal).toBeCloseTo(57375, 2);
+    // 2026 bracket[0]: { min: 0, max: 58522, rate: 0.14 }
+    // guaranteedIncome = 0, bracketSpace = 58522, no clawback risk → fills fully
+    expect(result.bracketFillWithdrawal).toBeCloseTo(58522, 2);
   });
 
   /** @see TEST-02 — MLT-03 OAS clawback gate skips fill when clawbackCost > taxSavings */
   it('TEST-02: MLT-03 gate — bracketFillWithdrawal is 0 when clawback cost exceeds tax savings', () => {
-    // guaranteedIncome = pensionIncome = 101000 (in bracket[1]: 57375-114750 at 20.5%)
-    // bracketSpace = 114750 - 101000 = 13750
-    // OAS threshold 2026 = 95323
-    // clawbackCost = 0.15 × (101000 + 13750 − 95323) = 0.15 × 19427 = 2914.05
-    // taxSavings  = 13750 × 0.205 = 2818.75
-    // 2914.05 > 2818.75 → MLT-03 gate fires → bracketFillWithdrawal = 0
+    // 2026 tax-table refresh (audit A-09): bracket[1] is now 58522-117045 at 20.5%.
+    // guaranteedIncome = pensionIncome = 105000 (in bracket[1])
+    // bracketSpace = 117045 - 105000 = 12045
+    // OAS threshold 2026 = 95323 (unchanged)
+    // clawbackCost = 0.15 × (105000 + 12045 − 95323) = 0.15 × 21722 = 3258.30
+    // taxSavings  = 12045 × 0.205 = 2469.225
+    // 3258.30 > 2469.225 → MLT-03 gate fires → bracketFillWithdrawal = 0
     const input = makeYearInput({
       bracketFill: { enabled: true },
-      pensionIncome: 101000,
+      pensionIncome: 105000,
     });
     const result = calculateYear(input);
     expect(result.bracketFillWithdrawal ?? 0).toBe(0);
@@ -82,28 +84,29 @@ describe('Bracket Fill (TAX-05) — Phase 63', () => {
 
   /** @see TEST-03 — surplus sweep routing to TFSA (up to room) then non-reg */
   it('TEST-03: surplus sweep routes correctly between TFSA and non-registered', () => {
-    // With retirementSpending=0, incomeGap=0, surplusFromBracketFill = bracketFillWithdrawal (57375).
+    // With retirementSpending=0, incomeGap=0, surplusFromBracketFill = bracketFillWithdrawal (58522).
     // No step-8 withdrawals since gap=0 → TFSA/non-reg changes are purely from sweep.
+    // 2026 tax-table refresh (audit A-09): fill amount = 58522 (indexed bottom ceiling).
 
     // Sub-scenario (a): surplus < TFSA room — all surplus goes to TFSA
-    // bracketFillWithdrawal = 57375; TFSA room = 7000 → 7000 to TFSA, 50375 to non-reg
+    // bracketFillWithdrawal = 58522; TFSA room = 7000 → 7000 to TFSA, 51522 to non-reg
     const inputA = makeYearInput({
       bracketFill: { enabled: true },
       availableTfsaContributionRoom: 7000,
     });
     const resultA = calculateYear(inputA);
     expect(resultA.tfsaBalance).toBe(10000 + 7000); // full room used
-    expect(resultA.nonRegBalance).toBe(20000 + (57375 - 7000)); // remainder to non-reg
+    expect(resultA.nonRegBalance).toBe(20000 + (58522 - 7000)); // remainder to non-reg
 
     // Sub-scenario (b): surplus > TFSA room — room to TFSA, rest to non-reg
-    // TFSA room = 1000 → 1000 to TFSA, 56375 to non-reg
+    // TFSA room = 1000 → 1000 to TFSA, 57522 to non-reg
     const inputB = makeYearInput({
       bracketFill: { enabled: true },
       availableTfsaContributionRoom: 1000,
     });
     const resultB = calculateYear(inputB);
     expect(resultB.tfsaBalance).toBe(10000 + 1000); // capped at room
-    expect(resultB.nonRegBalance).toBe(20000 + (57375 - 1000)); // full remainder
+    expect(resultB.nonRegBalance).toBe(20000 + (58522 - 1000)); // full remainder
   });
 
   /** @see TEST-04 — guard conditions: working year and post-RRIF-conversion */
@@ -133,5 +136,39 @@ describe('Bracket Fill (TAX-05) — Phase 63', () => {
     });
     const result = calculateYear(input);
     expect(result.bracketFillWithdrawal).toBe(5000);
+  });
+
+  /**
+   * TEST-06 (audit B-09): the bracket-fill surplus sweep deposits AFTER growth
+   * (D-18 convention), so the swept amount earns NO same-year growth — matching
+   * the allocate_surplus routing in surplus-handling.ts. Run with 10% growth so
+   * the timing is observable.
+   *
+   * @see docs/source-of-truth/06-investment-engine.md - end-of-year deposit timing (D-18)
+   */
+  it('TEST-06: surplus sweep earns no same-year growth (D-18 post-growth deposit)', () => {
+    const input = makeYearInput({
+      bracketFill: { enabled: true },
+      availableTfsaContributionRoom: 7000,
+      investmentReturn: 0.1, // 10% growth so pre/post-growth timing is distinguishable
+    });
+    const result = calculateYear(input);
+
+    // guaranteedIncome = 0 → bracketFillWithdrawal = 58522; incomeGap = 0 →
+    // surplus = 58522, swept 7000 → TFSA, 51522 → non-reg.
+    expect(result.bracketFillWithdrawal).toBeCloseTo(58522, 2);
+
+    // RRSP after fill = 300000 − 58522 = 241478, grows 10% → 265625.80.
+    expect(result.rrspBalance).toBeCloseTo((300000 - 58522) * 1.1, 2);
+
+    // TFSA: only the PRE-sweep balance (10000) grows; the 7000 sweep is added
+    // AFTER growth → 10000 × 1.1 + 7000 = 18000 (NOT (10000+7000) × 1.1 = 18700).
+    // The 700 delta = swept 7000 × 10% growth the deposit must NOT earn.
+    expect(result.tfsaBalance).toBeCloseTo(10000 * 1.1 + 7000, 2);
+
+    // Non-reg: only the PRE-sweep balance (20000) grows; the 51522 sweep is
+    // added AFTER growth → 20000 × 1.1 + 51522 = 73522 (NOT (20000+51522)×1.1).
+    // The 5152.20 delta = swept 51522 × 10% growth the deposit must NOT earn.
+    expect(result.nonRegBalance).toBeCloseTo(20000 * 1.1 + (58522 - 7000), 2);
   });
 });

@@ -8,6 +8,7 @@
  */
 import { sql } from 'kysely';
 import { db } from '../db/connection.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Sync a DOB value from household_profiles step_data into user_settings.
@@ -34,9 +35,11 @@ export async function syncDobToSettings(
       })
       .where('user_id', '=', userId)
       .execute();
-  } catch (_err: unknown) {
+  } catch (err: unknown) {
     // If no user_settings row exists, the update affects 0 rows — not an error.
-    // If a real DB error occurs, swallow it — sync is best-effort.
+    // If a real DB error occurs, swallow it — sync is best-effort (audit C-11:
+    // but leave a trace so silent failures are diagnosable).
+    logger.debug('syncDobToSettings failed (best-effort, swallowed)', { userId, role, err });
   }
 }
 
@@ -66,7 +69,9 @@ export async function syncDobToProfile(
       WHERE user_id = ${userId}
         AND step_data ? ${sql.lit(stepKey)}
     `.execute(db);
-  } catch (_err: unknown) {
-    // If no household_profiles row exists or the step key is absent, silently return.
+  } catch (err: unknown) {
+    // If no household_profiles row exists or the step key is absent, silently
+    // return — best-effort (audit C-11: traced at debug level).
+    logger.debug('syncDobToProfile failed (best-effort, swallowed)', { userId, role, err });
   }
 }

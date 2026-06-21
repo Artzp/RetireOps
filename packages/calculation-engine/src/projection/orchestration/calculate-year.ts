@@ -92,6 +92,9 @@ interface YearCtx {
   // Withdrawals (Step 8)
   meltdownRRSPWithdrawal: number;
   bracketFillWithdrawal: number;
+  // Bracket-fill surplus sweep, deferred to post-growth (D-18, audit B-09).
+  sweepTfsaDeposit: number;
+  sweepNonRegDeposit: number;
   rrspWithdrawal: number;
   additionalRRIFWithdrawal: number;
   tfsaWithdrawal: number;
@@ -142,6 +145,8 @@ function initContext(input: YearInput): YearCtx {
     incomeGap: 0,
     meltdownRRSPWithdrawal: 0,
     bracketFillWithdrawal: 0,
+    sweepTfsaDeposit: 0,
+    sweepNonRegDeposit: 0,
     rrspWithdrawal: 0,
     additionalRRIFWithdrawal: 0,
     tfsaWithdrawal: 0,
@@ -299,7 +304,7 @@ function applyBracketFillStep(c: YearCtx): void {
     currentTFSA: c.currentTFSA,
     currentNonReg: c.currentNonReg,
   };
-  c.bracketFillWithdrawal = applyBracketFill(balances, {
+  const fill = applyBracketFill(balances, {
     isRetired: c.isRetired,
     config: c.input.bracketFill,
     year: c.input.year,
@@ -312,7 +317,13 @@ function applyBracketFillStep(c: YearCtx): void {
     incomeGap: c.incomeGap,
     availableTfsaContributionRoom: c.input.availableTfsaContributionRoom,
   });
+  c.bracketFillWithdrawal = fill.bracketFillWithdrawal;
+  // Defer the surplus sweep deposits to post-growth (D-18, audit B-09).
+  c.sweepTfsaDeposit = fill.sweepTfsaDeposit;
+  c.sweepNonRegDeposit = fill.sweepNonRegDeposit;
   c.currentRRSP = balances.currentRRSP;
+  // TFSA / non-reg balances are NOT updated here for the sweep — only the RRSP
+  // withdrawal mutated `balances`. Sweep deposits land in applyBracketFillSweep.
   c.currentTFSA = balances.currentTFSA;
   c.currentNonReg = balances.currentNonReg;
 }
@@ -437,6 +448,10 @@ function applyOASClawbackTrim(c: YearCtx): void {
     cppIncome: c.cppIncome,
     oasIncome: c.oasIncome,
     rrifWithdrawal: c.rrifWithdrawal,
+    // Bracket-fill ran in applyBracketFillStep (before this trim) and folds into
+    // taxable rrifIncome at applyTaxStep; otherIncome is a tax-input field too.
+    bracketFillWithdrawal: c.bracketFillWithdrawal,
+    otherIncome: c.input.otherIncome,
     meltdownRRSPWithdrawal: c.meltdownRRSPWithdrawal,
     incomeThreshold: cfg.incomeThreshold,
     drawdownOrder: c.overrideAwareOrder,
@@ -492,6 +507,15 @@ function applyPass3Benefits(c: YearCtx): void {
 function applyPostWithdrawalSteps(c: YearCtx): void {
   applyTaxStep(c);
   applyGrowthStep(c);
+  applyBracketFillSweep(c);
+}
+
+function applyBracketFillSweep(c: YearCtx): void {
+  // D-18 (audit B-09): the bracket-fill surplus sweep deposits AFTER growth so
+  // the swept amount earns no same-year growth — matching the allocate_surplus
+  // routing convention in surplus-handling.ts.
+  c.currentTFSA += c.sweepTfsaDeposit;
+  c.currentNonReg += c.sweepNonRegDeposit;
 }
 
 function applyTaxStep(c: YearCtx): void {

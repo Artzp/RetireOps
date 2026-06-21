@@ -174,7 +174,8 @@ export function calculateTotalTax(input: TaxCalculationInput): TaxCalculation {
     netIncome,
     eligiblePensionIncome,
     province,
-    year
+    year,
+    taxYearParams
   );
   // Provincial dividend tax credits (D-05)
   const provincialDividendCredit = calculateProvincialDividendCredit(
@@ -207,7 +208,12 @@ export function calculateTotalTax(input: TaxCalculationInput): TaxCalculation {
 
   // Calculate marginal rates
   const marginalRateFederal = getFederalMarginalRate(taxableIncome, year);
-  const marginalRateProvincial = getProvincialMarginalRate(taxableIncome, province, year);
+  const marginalRateProvincial = getProvincialMarginalRate(
+    taxableIncome,
+    province,
+    year,
+    taxYearParams
+  );
   const marginalRateCombined = marginalRateFederal + marginalRateProvincial;
 
   // Calculate effective rate

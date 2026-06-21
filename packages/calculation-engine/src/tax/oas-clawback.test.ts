@@ -13,11 +13,12 @@ import {
   incomeForTargetClawback,
   maxIncomeToAvoidClawback,
 } from './oas-clawback.js';
-import { OAS_CLAWBACK_THRESHOLDS, BENEFIT_AMOUNTS_2024 } from '@retireops/shared';
+import { OAS_CLAWBACK_THRESHOLDS } from '@retireops/shared';
 
 describe('OAS Clawback Calculations', () => {
   const clawbackThreshold = OAS_CLAWBACK_THRESHOLDS[2024].threshold; // $90,997
-  const maxOAS = BENEFIT_AMOUNTS_2024.oas.maxAnnualAge65To74; // $8,560
+  // Arbitrary OAS-max input (2024 tabled figure; the removed BENEFIT_AMOUNTS_2024)
+  const maxOAS = 8560;
 
   describe('getOASClawbackThreshold', () => {
     it('should return the 2024 threshold', () => {
@@ -30,6 +31,29 @@ describe('OAS Clawback Calculations', () => {
 
     it('should return the 2026 threshold', () => {
       expect(getOASClawbackThreshold(2026)).toBe(OAS_CLAWBACK_THRESHOLDS[2026].threshold);
+    });
+  });
+
+  describe('A-06: out-of-range year fallback (largest knownYear <= year, clamp to earliest)', () => {
+    it('clamps to the earliest tabled year (2024) for a year before the table range', () => {
+      // 2023 < earliest tabled year 2024 → earliest set, NOT the latest (old bug
+      // returned the 2026 set via an inverted fallback).
+      expect(getOASClawbackThreshold(2023)).toBe(OAS_CLAWBACK_THRESHOLDS[2024].threshold);
+      expect(getOASFullClawbackThreshold(2023, 70)).toBe(
+        OAS_CLAWBACK_THRESHOLDS[2024].fullClawbackAge65To74
+      );
+    });
+
+    it('uses the latest tabled year (2026) for a year past the table range', () => {
+      // 2027 > latest tabled year 2026 → largest knownYear <= 2027 is 2026.
+      expect(getOASClawbackThreshold(2027)).toBe(OAS_CLAWBACK_THRESHOLDS[2026].threshold);
+      expect(getOASFullClawbackThreshold(2027, 80)).toBe(
+        OAS_CLAWBACK_THRESHOLDS[2026].fullClawbackAge75Plus
+      );
+    });
+
+    it('resolves an exact tabled key to itself', () => {
+      expect(getOASClawbackThreshold(2025)).toBe(OAS_CLAWBACK_THRESHOLDS[2025].threshold);
     });
   });
 

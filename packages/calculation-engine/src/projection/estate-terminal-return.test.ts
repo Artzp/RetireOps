@@ -96,11 +96,11 @@ describe('estate terminal-return wiring — single projection (M004/S02 T01)', (
   // logged numbers into the __PIN_*__ constants, then re-skip.
   it.skip('CAPTURE harness — run once to produce K012 pins then re-skip', () => {
     const output = runSingleProjection(makeONTerminalInput());
-    // eslint-disable-next-line no-console
+
     console.log('\n=== M004/S02 T01 CAPTURE ===');
-    // eslint-disable-next-line no-console
+
     console.log(JSON.stringify(output.terminalTaxEvents, null, 2));
-    // eslint-disable-next-line no-console
+
     console.log('final row balances:', {
       rrsp: output.yearlyResults[output.yearlyResults.length - 1]?.rrspBalance,
       rrif: output.yearlyResults[output.yearlyResults.length - 1]?.rrifBalance,
@@ -115,7 +115,11 @@ describe('estate terminal-return wiring — single projection (M004/S02 T01)', (
 // fixture in makeONTerminalInput(). DO NOT hand-edit; regenerate via the
 // CAPTURE harness above if tax tables or engine behavior changes.
 // ---------------------------------------------------------------------------
-const __PIN_TERMINAL_TAXES_ON_SINGLE__ = 382759.967268;
+// 2026 tax-table refresh (audit A-09/A-10): terminal-tax pins recaptured on the
+// doc-19 2026 federal+provincial credits/brackets (higher BPA/age/pension credits
+// + 2.0%-indexed federal brackets → lower terminal tax). grossEstate/deemed pins
+// are balance-driven and unchanged.
+const __PIN_TERMINAL_TAXES_ON_SINGLE__ = 382194.659768;
 const __PIN_GROSS_ESTATE_ON_SINGLE__ = 1_050_000;
 const __PIN_DEEMED_ON_SINGLE__ = 800_000;
 
@@ -362,13 +366,13 @@ describe('estate terminal-return wiring — couple projection (M004/S02 T02)', (
     const a = runCoupleProjection(makeFirstDeathWithSurvivorInput());
     const b = runCoupleProjection(makeSpouseFirstInput());
     const c = runCoupleProjection(makeSameYearDualDeathInput());
-    // eslint-disable-next-line no-console
+
     console.log('\n=== M004/S02 T02 COUPLE CAPTURE ===');
-    // eslint-disable-next-line no-console
+
     console.log('SCENARIO A events:', JSON.stringify(a.terminalTaxEvents, null, 2));
-    // eslint-disable-next-line no-console
+
     console.log('SCENARIO B events:', JSON.stringify(b.terminalTaxEvents, null, 2));
-    // eslint-disable-next-line no-console
+
     console.log('SCENARIO C events:', JSON.stringify(c.terminalTaxEvents, null, 2));
   });
 });
@@ -378,9 +382,10 @@ describe('estate terminal-return wiring — couple projection (M004/S02 T02)', (
 // regenerate via the COUPLE CAPTURE harness above if tax tables or engine
 // behavior changes.
 // ---------------------------------------------------------------------------
-const __PIN_COUPLE_A_SPOUSE_TERMINAL_TAXES__ = 203162.1815298641;
+// 2026 tax-table refresh (audit A-09/A-10) — recaptured; see ON_SINGLE note above.
+const __PIN_COUPLE_A_SPOUSE_TERMINAL_TAXES__ = 202596.8740298641;
 const __PIN_COUPLE_A_SPOUSE_GROSS_ESTATE__ = 824488.8328361581;
-const __PIN_COUPLE_B_PRIMARY_TERMINAL_TAXES__ = 203162.1815298641;
+const __PIN_COUPLE_B_PRIMARY_TERMINAL_TAXES__ = 202596.8740298641;
 const __PIN_COUPLE_B_PRIMARY_GROSS_ESTATE__ = 824488.8328361581;
 
 // ---------------------------------------------------------------------------
@@ -489,11 +494,11 @@ describe('estate terminal-return wiring — cross-jurisdiction couples (M004/S02
   it.skip('CAPTURE harness — QC + AB cross-jurisdiction couple pins', () => {
     const qc = runCoupleProjection(makeCoupleQCFirstDeathInput());
     const ab = runCoupleProjection(makeCoupleABFirstDeathInput());
-    // eslint-disable-next-line no-console
+
     console.log('\n=== M004/S02 T03 QC/AB CAPTURE ===');
-    // eslint-disable-next-line no-console
+
     console.log('QC events:', JSON.stringify(qc.terminalTaxEvents, null, 2));
-    // eslint-disable-next-line no-console
+
     console.log('AB events:', JSON.stringify(ab.terminalTaxEvents, null, 2));
   });
 });
@@ -503,9 +508,12 @@ describe('estate terminal-return wiring — cross-jurisdiction couples (M004/S02
 // hand-edit; regenerate via the QC/AB CAPTURE harness above if tax tables or
 // engine behavior changes.
 // ---------------------------------------------------------------------------
-const __PIN_COUPLE_QC_SPOUSE_TERMINAL_TAXES__ = 211317.3336683141;
+// 2026 tax-table refresh (audit A-09/A-10) — recaptured. QC uses AREL_2026
+// (age 3470, retirement 3470 per doc-19 §5); AB now receives a real age+pension
+// credit (#2026-ab-age-amount 6151, #2026-ab-pension-income-amount 1667).
+const __PIN_COUPLE_QC_SPOUSE_TERMINAL_TAXES__ = 210853.52456831408;
 const __PIN_COUPLE_QC_SPOUSE_GROSS_ESTATE__ = 824488.8328361581;
-const __PIN_COUPLE_AB_SPOUSE_TERMINAL_TAXES__ = 181682.3547613559;
+const __PIN_COUPLE_AB_SPOUSE_TERMINAL_TAXES__ = 181060.19476135587;
 const __PIN_COUPLE_AB_SPOUSE_GROSS_ESTATE__ = 824488.8328361581;
 
 // ---------------------------------------------------------------------------

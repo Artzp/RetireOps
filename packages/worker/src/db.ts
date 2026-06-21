@@ -51,6 +51,21 @@ const dialect = new PostgresDialect({
 
 export const db = new Kysely<Database>({ dialect });
 
+/**
+ * Fetch the projection row's calculated_at timestamp.
+ * Used by the projection processor's retry idempotency guard (audit C-08):
+ * a BullMQ retry must not overwrite a result that was written AFTER the job
+ * was enqueued (crash between DB write and queue ack, or a newer job landed).
+ */
+export async function getProjectionCalculatedAt(projectionId: string): Promise<Date | null> {
+  const row = await db
+    .selectFrom('projections')
+    .select(['calculated_at'])
+    .where('id', '=', projectionId)
+    .executeTakeFirst();
+  return row?.calculated_at ?? null;
+}
+
 export async function updateProjectionResult(
   projectionId: string,
   resultData: unknown,

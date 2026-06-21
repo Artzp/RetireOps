@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateYear, calculatePersonYear } from './yearly-calculator.js';
 import type { YearInput, PersonYearInput } from './yearly-calculator.js';
-import { OAS_CLAWBACK_THRESHOLDS, BENEFIT_AMOUNTS_2024 } from '@retireops/shared';
+import { OAS_CLAWBACK_THRESHOLDS } from '@retireops/shared';
 
 /**
  * ISSUE-82 regression: OAS clawback must fire in projection output when the
@@ -21,7 +21,8 @@ import { OAS_CLAWBACK_THRESHOLDS, BENEFIT_AMOUNTS_2024 } from '@retireops/shared
  * s.117.1 (Service Canada / CRA T1 line 23500). 2026 base = $95,323.
  */
 
-const maxOAS_65to74 = BENEFIT_AMOUNTS_2024.oas.maxAnnualAge65To74; // base tabled figure
+// Base tabled figure (2024 OAS max 65-74; the removed BENEFIT_AMOUNTS_2024 constant)
+const maxOAS_65to74 = 8560;
 const threshold2026 = OAS_CLAWBACK_THRESHOLDS[2026].threshold; // $95,323
 
 /**

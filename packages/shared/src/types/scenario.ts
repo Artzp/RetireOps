@@ -150,6 +150,13 @@ export const ScenarioDecisionsSchema = z.object({
         createdAt: z.string().datetime().optional(),
         updatedAt: z.string().datetime().optional(),
         originalEngineValue: z.number().min(0).max(10_000_000).finite().optional(),
+        /**
+         * Audit C-09: true when no baseline engine row/value existed for this
+         * override's (year, field, owner) at anchor time — originalEngineValue
+         * is then a 0 placeholder, not a real engine value. UI should treat
+         * "was $X" as unavailable rather than $0.
+         */
+        originalEngineValueMissing: z.boolean().optional(),
       })
     )
     .max(200, { message: 'Too many withdrawal overrides (max 200)' })
@@ -189,6 +196,8 @@ export const ScenarioDecisionsSchema = z.object({
         createdAt: z.string().datetime().optional(),
         updatedAt: z.string().datetime().optional(),
         originalEngineValue: z.number().min(0).max(10_000_000).finite().optional(),
+        /** Audit C-09: see withdrawalOverrides.originalEngineValueMissing. */
+        originalEngineValueMissing: z.boolean().optional(),
       })
     )
     .max(200, { message: 'Too many spending overrides (max 200)' })

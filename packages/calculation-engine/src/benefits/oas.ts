@@ -1,8 +1,10 @@
 /**
  * OAS Benefit Calculations
  * @see docs/source-of-truth/05-government-benefits.md - OAS Section
+ * @see docs/source-of-truth/18-pensions-2026.md - OAS 2026 parameter values
  */
-import { OAS_ADJUSTMENT_FACTORS, OAS_RATES, OAS_BENEFIT_AMOUNTS } from '@retireops/shared';
+import { OAS_ADJUSTMENT_FACTORS, OAS_RATES } from '@retireops/shared';
+import { OAS_2026 } from '@retireops/shared/benefits';
 
 const {
   DEFERRAL_INCREASE_PER_MONTH,
@@ -12,8 +14,30 @@ const {
   MINIMUM_RESIDENCY_YEARS,
 } = OAS_ADJUSTMENT_FACTORS;
 
+/**
+ * Year-indexed OAS maximum annual amounts (full residency, age 65–74 and 75+).
+ *
+ * 2026 values are derived from the citation-anchored Q2 (current) monthly
+ * amounts in `benefits-parameters/2026.ts` — the same source consumed by the
+ * profile-wizard OAS estimator — so the engine and wizard agree on gross OAS.
+ * Annual = monthly × 12.
+ *
+ * The year-indexed map structure is preserved so future annual parameter files
+ * (2027+) slot in alongside 2026 without changing the lookup logic; for years
+ * before the earliest known entry the engine falls back to the nearest table
+ * (mainline projections are always >= 2026).
+ */
+const OAS_MAX_ANNUAL_AMOUNTS = {
+  2026: {
+    // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74
+    maxAnnualAge65To74: OAS_2026.q2.maxMonthlyAge65To74 * 12, // 743.05 × 12 = 8916.60
+    // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-75plus
+    maxAnnualAge75Plus: OAS_2026.q2.maxMonthlyAge75Plus * 12, // 817.36 × 12 = 9808.32
+  },
+} as const;
+
 function getOASBenefitAmountsForYear(year: number) {
-  const knownYears = Object.keys(OAS_BENEFIT_AMOUNTS)
+  const knownYears = Object.keys(OAS_MAX_ANNUAL_AMOUNTS)
     .map(Number)
     .sort((a, b) => a - b);
   const latestKnownYear = knownYears[knownYears.length - 1];
@@ -30,11 +54,11 @@ function getOASBenefitAmountsForYear(year: number) {
     }
   }
 
-  if (Object.hasOwn(OAS_BENEFIT_AMOUNTS, year)) {
-    return OAS_BENEFIT_AMOUNTS[year as keyof typeof OAS_BENEFIT_AMOUNTS];
+  if (Object.hasOwn(OAS_MAX_ANNUAL_AMOUNTS, year)) {
+    return OAS_MAX_ANNUAL_AMOUNTS[year as keyof typeof OAS_MAX_ANNUAL_AMOUNTS];
   }
 
-  return OAS_BENEFIT_AMOUNTS[fallbackYear as keyof typeof OAS_BENEFIT_AMOUNTS];
+  return OAS_MAX_ANNUAL_AMOUNTS[fallbackYear as keyof typeof OAS_MAX_ANNUAL_AMOUNTS];
 }
 
 /**

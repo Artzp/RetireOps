@@ -132,7 +132,7 @@ export async function createProfileScenario(userId: string, name: string) {
       profile_id: profileId,
       name,
       is_base: false,
-      decisions: {} as never,
+      decisions: {},
       result_data: null,
       status: 'pending',
     })
@@ -159,7 +159,7 @@ export async function createProfileScenarioFromTemplate(
       profile_id: profileId,
       name,
       is_base: false,
-      decisions: template.decisions as never,
+      decisions: template.decisions,
       result_data: null,
       status: 'pending',
     })
@@ -326,14 +326,14 @@ function injectOriginalEngineValues<
       const row = rowsByYear.get(rec.year);
       if (!row) {
         // D-47: Year falls outside projection range or engine produced no row.
-        // Log the anomaly and anchor to 0 so the UI always has a defined
-        // "was $X" value (PROV-02) rather than silently omitting it.
-        logger.warn('injectOriginalEngineValues: no baseline row for year', {
+        // Audit C-09: anchor to 0 but flag it so the UI can show "unavailable"
+        // instead of a misleading "was $0" (PROV-02).
+        logger.error('injectOriginalEngineValues: no baseline row for year', {
           year: rec.year,
           field: rec.field,
           owner,
         });
-        return { ...rec, originalEngineValue: 0 };
+        return { ...rec, originalEngineValue: 0, originalEngineValueMissing: true };
       }
 
       let baselineValue: number | undefined;
@@ -373,13 +373,13 @@ function injectOriginalEngineValues<
         }
       }
       if (typeof baselineValue !== 'number' || !Number.isFinite(baselineValue)) {
-        logger.warn('injectOriginalEngineValues: no finite baseline for withdrawal field', {
+        logger.error('injectOriginalEngineValues: no finite baseline for withdrawal field', {
           year: rec.year,
           field: rec.field,
           owner,
           baselineValue,
         });
-        return { ...rec, originalEngineValue: 0 };
+        return { ...rec, originalEngineValue: 0, originalEngineValueMissing: true };
       }
       return { ...rec, originalEngineValue: Math.max(0, baselineValue) };
     });
@@ -397,22 +397,23 @@ function injectOriginalEngineValues<
       }
       const row = rowsByYear.get(rec.year);
       if (!row) {
-        logger.warn('injectOriginalEngineValues: no baseline row for year', {
+        // Audit C-09: see withdrawalOverrides branch above.
+        logger.error('injectOriginalEngineValues: no baseline row for year', {
           year: rec.year,
           field: 'spending',
           owner,
         });
-        return { ...rec, originalEngineValue: 0 };
+        return { ...rec, originalEngineValue: 0, originalEngineValueMissing: true };
       }
       const baselineValue: number | undefined =
         owner === 'spouse' ? row.spouseLivingExpenses : row.livingExpenses;
       if (typeof baselineValue !== 'number' || !Number.isFinite(baselineValue)) {
-        logger.warn('injectOriginalEngineValues: no finite baseline for spending', {
+        logger.error('injectOriginalEngineValues: no finite baseline for spending', {
           year: rec.year,
           owner,
           baselineValue,
         });
-        return { ...rec, originalEngineValue: 0 };
+        return { ...rec, originalEngineValue: 0, originalEngineValueMissing: true };
       }
       return { ...rec, originalEngineValue: Math.max(0, baselineValue) };
     });
@@ -504,7 +505,7 @@ export async function updateScenarioDecisions(
 
   await db
     .updateTable('profile_scenarios')
-    .set({ decisions: validated as never, status: 'stale', updated_at: new Date() })
+    .set({ decisions: validated, status: 'stale', updated_at: new Date() })
     .where('id', '=', scenarioId)
     .execute();
 }
@@ -667,7 +668,7 @@ export async function recomputeAllScenarios(profileId: string): Promise<void> {
         .updateTable('profile_scenarios')
         .set({
           status: 'completed',
-          result_data: resultData as never,
+          result_data: resultData,
           calculated_at: new Date(),
           updated_at: new Date(),
         })
@@ -711,7 +712,7 @@ export async function runSingleScenario(userId: string, scenarioId: string): Pro
       .updateTable('profile_scenarios')
       .set({
         status: 'completed',
-        result_data: resultData as never,
+        result_data: resultData,
         calculated_at: new Date(),
         updated_at: new Date(),
       })
@@ -777,18 +778,55 @@ const METRICS_CONFIG = [
   { name: 'yearsInRetirement', label: 'Years in Retirement', higherIsBetter: true },
 ] as const;
 
-function extractSummary(resultData: unknown): FrontendSummary | null {
-  if (!resultData || typeof resultData !== 'object') return null;
+/**
+ * Distinguishes a well-formed stored result from a null / failed / corrupted
+ * result_data blob (audit C-03). 'missing' covers: never run, run failed
+ * (result_data left null), or a blob that lost its expected shape.
+ */
+export type ScenarioResultStatus = 'ok' | 'missing';
+
+function extractSummary(resultData: unknown): {
+  summary: FrontendSummary | null;
+  status: ScenarioResultStatus;
+} {
+  if (!resultData || typeof resultData !== 'object') return { summary: null, status: 'missing' };
   const data = resultData as Record<string, unknown>;
-  if (!data['summary'] || typeof data['summary'] !== 'object') return null;
-  return data['summary'] as FrontendSummary;
+  if (!data['summary'] || typeof data['summary'] !== 'object') {
+    return { summary: null, status: 'missing' };
+  }
+  return { summary: data['summary'] as FrontendSummary, status: 'ok' };
 }
 
-function extractYearlyResults(resultData: unknown): FrontendYearlyResult[] {
-  if (!resultData || typeof resultData !== 'object') return [];
+function extractYearlyResults(resultData: unknown): {
+  yearlyResults: FrontendYearlyResult[];
+  status: ScenarioResultStatus;
+} {
+  if (!resultData || typeof resultData !== 'object') {
+    return { yearlyResults: [], status: 'missing' };
+  }
   const data = resultData as Record<string, unknown>;
-  if (!Array.isArray(data['yearlyResults'])) return [];
-  return data['yearlyResults'] as FrontendYearlyResult[];
+  if (!Array.isArray(data['yearlyResults'])) {
+    return { yearlyResults: [], status: 'missing' };
+  }
+  return { yearlyResults: data['yearlyResults'] as FrontendYearlyResult[], status: 'ok' };
+}
+
+/**
+ * Extract both halves of a stored scenario result and collapse the two
+ * extraction statuses into one per-scenario resultStatus (audit C-03, C-10).
+ */
+function extractScenarioResult(resultData: unknown): {
+  summary: FrontendSummary | null;
+  yearlyResults: FrontendYearlyResult[];
+  resultStatus: ScenarioResultStatus;
+} {
+  const { summary, status: summaryStatus } = extractSummary(resultData);
+  const { yearlyResults, status: yearlyStatus } = extractYearlyResults(resultData);
+  return {
+    summary,
+    yearlyResults,
+    resultStatus: summaryStatus === 'ok' && yearlyStatus === 'ok' ? 'ok' : 'missing',
+  };
 }
 
 /**
@@ -841,8 +879,41 @@ export async function compareProfileScenarios(userId: string, ids: string[]): Pr
   // Include all requested non-base scenarios; exclude base from the column list
   const nonBaseScenarios = requestedScenarios.filter((s) => s.id !== baseScenario.id);
 
-  const baseSummary = extractSummary(baseScenario.result_data);
-  const baseYearly = extractYearlyResults(baseScenario.result_data);
+  // Audit C-04: a request that resolves to zero non-base columns (e.g. ids
+  // containing only the base scenario, duplicates of it, or IDs not belonging
+  // to this profile) would previously return a structurally valid but empty
+  // comparison. Reject it explicitly instead.
+  if (nonBaseScenarios.length === 0) {
+    throw new ConflictError('Comparison requires at least one non-base scenario');
+  }
+
+  const baseExtract = extractScenarioResult(baseScenario.result_data);
+  const baseSummary = baseExtract.summary;
+  const baseYearly = baseExtract.yearlyResults;
+
+  // Per-scenario extraction, computed once and reused by metrics + yearly
+  // loops. Carries resultStatus so failed/missing results are distinguishable
+  // from legitimately empty ones (audit C-03).
+  const scenarioExtracts = new Map<string, ReturnType<typeof extractScenarioResult>>();
+  for (const s of nonBaseScenarios) {
+    scenarioExtracts.set(s.id as string, extractScenarioResult(s.result_data));
+  }
+
+  // Audit C-10: surface explicit warnings instead of silently rendering empty
+  // columns when the base (or any compared scenario) has no usable results.
+  const warnings: string[] = [];
+  if (baseExtract.resultStatus !== 'ok') {
+    warnings.push(
+      `Base scenario "${String(baseScenario.name)}" has no stored results; comparison deltas are unavailable.`
+    );
+  }
+  for (const s of nonBaseScenarios) {
+    if (scenarioExtracts.get(s.id as string)?.resultStatus !== 'ok') {
+      warnings.push(
+        `Scenario "${String(s.name)}" has no stored results; its comparison column is incomplete.`
+      );
+    }
+  }
 
   // Build metric comparisons
   const metrics = METRICS_CONFIG.map((config) => {
@@ -851,7 +922,7 @@ export async function compareProfileScenarios(userId: string, ids: string[]): Pr
       : null;
 
     const scenarioMetrics = nonBaseScenarios.map((s: any) => {
-      const summary = extractSummary(s.result_data);
+      const summary = scenarioExtracts.get(s.id as string)?.summary ?? null;
       const value = summary
         ? ((summary[config.name as keyof FrontendSummary] as number | null) ?? null)
         : null;
@@ -912,7 +983,7 @@ export async function compareProfileScenarios(userId: string, ids: string[]): Pr
   }
 
   for (const s of nonBaseScenarios) {
-    const yearly = extractYearlyResults(s.result_data);
+    const yearly = scenarioExtracts.get(s.id as string)?.yearlyResults ?? [];
     for (const yr of yearly) {
       const row = allYears.get(yr.year);
       if (row) {
@@ -933,16 +1004,21 @@ export async function compareProfileScenarios(userId: string, ids: string[]): Pr
       id: baseScenario.id as string,
       name: baseScenario.name as string,
       resultData: baseScenario.result_data,
+      // Audit C-03/C-10: 'missing' when result_data is absent, failed, or corrupted.
+      resultStatus: baseExtract.resultStatus,
     },
     scenarios: nonBaseScenarios.map((s: any) => ({
       id: s.id as string,
       name: s.name as string,
       modifications: (s.decisions ?? {}) as Record<string, unknown>,
       resultData: s.result_data,
+      resultStatus: scenarioExtracts.get(s.id as string)?.resultStatus ?? 'missing',
     })),
     comparison: {
       metrics,
       yearlyComparison,
     },
+    // Audit C-10: always present; empty when every compared result is usable.
+    warnings,
   };
 }

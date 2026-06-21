@@ -1,7 +1,5 @@
 'use client';
 
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-
 import type { ReactNode } from 'react';
 import type { DisplayMode } from '@retireops/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,7 +55,7 @@ function Row({ label, children }: RowProps) {
 }
 
 function formatAge(age: number): string {
-  return `Age ${age}`;
+  return `Age ${String(age)}`;
 }
 
 function formatCount(value: number): string {
@@ -79,7 +77,7 @@ export function AssumptionsCard({ assumptions, displayMode }: AssumptionsCardPro
   const taxTablesNote =
     a.taxTableVersion ??
     (a.federalTaxTableYear !== undefined
-      ? `Tax tables: Federal ${a.federalTaxTableYear}; ${
+      ? `Tax tables: Federal ${String(a.federalTaxTableYear)}; ${
           a.provincialTaxTableNote ?? 'provincial tables use the latest available published values.'
         }`
       : undefined);

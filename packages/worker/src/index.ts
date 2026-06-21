@@ -5,5 +5,5 @@
 
 export { config } from './config.js';
 export { logger } from './logger.js';
-export { projectionQueue, scenarioComparisonQueue, monteCarloQueue } from './queues.js';
+export { projectionQueue, monteCarloQueue } from './queues.js';
 export { db } from './db.js';

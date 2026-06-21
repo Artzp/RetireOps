@@ -40,19 +40,34 @@ export const FEDERAL_TAX_2025: TaxTable = {
 
 /**
  * Federal Tax Brackets (2026)
- * @see docs/architecture/TARGET-BLUEPRINT.md - 2026 federal bracket table
+ *
+ * Bracket thresholds = 2025 thresholds indexed by the 2.0% federal indexation
+ * factor, rounded to the nearest dollar (CRA convention):
+ *   57375×1.02→58522, 114750×1.02→117045, 177882×1.02→181440, 253414×1.02→258482.
+ * Cross-check: the third/fifth indexed thresholds (181440 / 258482) land exactly
+ * on the doc-19 BPA phase-out start/end anchors, corroborating the factor.
+ * Lowest rate 0.14 per #2026-fed-lowest-rate (already correct, unchanged).
+ * BPA = max value 16452 (16129×1.02→16452, matches the doc exactly). The engine
+ * does not model the high-income BPA phase-out (16452→14829 between $181,440 and
+ * $258,482); only the max value is fixed here per audit scope (no new mechanics).
+ *
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-indexation
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-lowest-rate
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-bpa-max
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-bpa-phaseout-start
+ * @see docs/source-of-truth/04-tax-engine.md - Federal Tax Brackets
  */
 export const FEDERAL_TAX_2026: TaxTable = {
   year: 2026,
   jurisdiction: 'federal',
   brackets: [
-    { min: 0, max: 57375, rate: 0.14 },
-    { min: 57375, max: 114750, rate: 0.205 },
-    { min: 114750, max: 177882, rate: 0.26 },
-    { min: 177882, max: 253414, rate: 0.29 },
-    { min: 253414, max: Infinity, rate: 0.33 },
+    { min: 0, max: 58522, rate: 0.14 },
+    { min: 58522, max: 117045, rate: 0.205 },
+    { min: 117045, max: 181440, rate: 0.26 },
+    { min: 181440, max: 258482, rate: 0.29 },
+    { min: 258482, max: Infinity, rate: 0.33 },
   ],
-  basicPersonalAmount: 16129,
+  basicPersonalAmount: 16452,
 };
 
 /**
@@ -597,10 +612,61 @@ export const PROVINCIAL_TAX_TABLES_2025: Record<string, TaxTable> = {
 };
 
 /**
+ * All Provincial Tax Tables (2026)
+ *
+ * DOC GAP — carried forward from 2025. Source-of-truth doc 19
+ * (19-benefits-tax-credits-2026.md §5) tables provincial AGE AMOUNTS, PENSION
+ * INCOME AMOUNTS, and DTC BASES for 2026, but does NOT publish 2026 provincial
+ * tax BRACKETS, RATES, BPAs, or SURTAX thresholds for any province. Doc 04
+ * (04-tax-engine.md) only carries provincial brackets/BPA for 2024. With no
+ * authoritative 2026 provincial bracket/BPA values available, every province's
+ * 2025 table is carried forward verbatim here (year stamp updated to 2026).
+ *
+ * These carried-forward 2026 tables are the BASE for the calculation-engine's
+ * inflation-extrapolation path (tax/indexing.ts buildTaxYearParams): years
+ * beyond 2026 scale these thresholds/BPAs by the projection inflation rate, so
+ * long-horizon provincial tax no longer freezes at 2025 thresholds in
+ * perpetuity (the A-10 defect). 2026 itself equals the 2025 figures until the
+ * authoritative 2026 provincial bracket/BPA values are published.
+ *
+ * @see docs/audit/AUDIT-2026-06-10.internal.md A-10
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md §5 (credits only; no brackets)
+ */
+export const PROVINCIAL_TAX_TABLES_2026: Record<string, TaxTable> = {
+  // TODO: doc 19 lacks 2026 brackets/BPA for ON — carried 2025 forward
+  ON: { ...ONTARIO_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for BC — carried 2025 forward
+  BC: { ...BC_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for AB — carried 2025 forward
+  AB: { ...ALBERTA_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for QC — carried 2025 forward
+  QC: { ...QUEBEC_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for SK — carried 2025 forward
+  SK: { ...SASKATCHEWAN_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for MB — carried 2025 forward
+  MB: { ...MANITOBA_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for NS — carried 2025 forward
+  NS: { ...NOVA_SCOTIA_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for NB — carried 2025 forward
+  NB: { ...NEW_BRUNSWICK_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for PE — carried 2025 forward
+  PE: { ...PEI_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for NL — carried 2025 forward
+  NL: { ...NEWFOUNDLAND_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for YT — carried 2025 forward
+  YT: { ...YUKON_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for NT — carried 2025 forward
+  NT: { ...NWT_TAX_2025, year: 2026 },
+  // TODO: doc 19 lacks 2026 brackets/BPA for NU — carried 2025 forward
+  NU: { ...NUNAVUT_TAX_2025, year: 2026 },
+};
+
+/**
  * Get provincial tax tables for a given year
  * Falls back to 2024 tables for earlier years
  */
 export function getProvincialTaxTables(year: number): Record<string, TaxTable> {
+  if (year >= 2026) return PROVINCIAL_TAX_TABLES_2026;
   if (year >= 2025) return PROVINCIAL_TAX_TABLES_2025;
   return PROVINCIAL_TAX_TABLES_2024;
 }
@@ -787,3 +853,274 @@ export const AREL_2024 = {
     creditRate: 0.14,
   },
 } as const;
+
+/**
+ * Age Credit Parameters (2026)
+ *
+ * Age-amount and federal-threshold DOLLAR values are updated to the doc-19
+ * 2026 figures (§5 provincial age-amount table + §3 federal age-amount
+ * anchors). Per-province phase-out incomeThreshold and reductionRate are a
+ * DOC GAP — doc 19 §5 gives only an approximate intro note ("ON ~$45,522,
+ * BC ~$40,000, AB ~$45,000") and no anchored per-province thresholds or
+ * reduction rates, so those are carried forward verbatim from AGE_CREDIT_2024.
+ * creditRate is each province's lowest-bracket rate (unchanged from 2025).
+ *
+ * Federal: ageAmount 9208 (#2026-fed-age-amount), incomeThreshold 45522
+ * (#2026-fed-age-amount-phaseout-start, doc value ~$45,522). The federal
+ * non-refundable credit rate dropped to 14% in 2026 (#2026-fed-lowest-rate);
+ * the engine derives that rate from the federal bracket table, so creditRate
+ * here stays the structural 0.15 marker the engine divides out (see
+ * federal-tax.ts getFederalNonRefundableCreditRate / creditRate-ratio math).
+ *
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-age-amount
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-fed-age-amount-phaseout-start
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-bc-age-amount
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-on-age-amount
+ * @see docs/source-of-truth/04-tax-engine.md - Age Credit Section
+ */
+export const AGE_CREDIT_2026 = {
+  federal: {
+    // #2026-fed-age-amount = $9,208; threshold #2026-fed-age-amount-phaseout-start ≈ $45,522.
+    ageAmount: 9208,
+    incomeThreshold: 45522,
+    reductionRate: 0.15,
+    creditRate: 0.15,
+  },
+  ON: {
+    // #2026-on-age-amount = $6,342. threshold/reductionRate carried from 2024 (DOC GAP).
+    ageAmount: 6342,
+    incomeThreshold: 44325,
+    reductionRate: 0.15,
+    creditRate: 0.0505,
+  },
+  BC: {
+    // #2026-bc-age-amount = $5,824. threshold/reductionRate carried from 2024 (DOC GAP).
+    ageAmount: 5824,
+    incomeThreshold: 42723,
+    reductionRate: 0.15,
+    creditRate: 0.0506,
+  },
+  AB: {
+    // #2026-ab-age-amount = $6,151. threshold ~$45,000 per doc-19 §5 intro note
+    // (approximate, not anchored) → use the federal threshold as a stand-in (DOC GAP).
+    ageAmount: 6151,
+    incomeThreshold: 45522,
+    reductionRate: 0.15,
+    creditRate: 0.1,
+  },
+  NL: {
+    // #2026-nl-age-amount = $7,109 (1.1% indexation 2026). threshold/reductionRate carried (DOC GAP).
+    ageAmount: 7109,
+    incomeThreshold: 37842,
+    reductionRate: 0.15,
+    creditRate: 0.087,
+  },
+  NS: {
+    // #2026-ns-age-amount = $4,141. threshold/reductionRate carried from 2024 (DOC GAP).
+    ageAmount: 4141,
+    incomeThreshold: 30828,
+    reductionRate: 0.15,
+    creditRate: 0.0879,
+  },
+  NB: {
+    // #2026-nb-age-amount = $5,978. threshold/reductionRate carried from 2024 (DOC GAP).
+    ageAmount: 5978,
+    incomeThreshold: 43763,
+    reductionRate: 0.15,
+    creditRate: 0.094,
+  },
+  PE: {
+    // #2026-pe-age-amount = $4,679. threshold/reductionRate carried from 2024 (DOC GAP).
+    ageAmount: 4679,
+    incomeThreshold: 33740,
+    reductionRate: 0.15,
+    creditRate: 0.0965,
+  },
+  MB: {
+    // #2026-mb-age-amount = $3,728 (not indexed since 2025). threshold/reductionRate carried (DOC GAP).
+    ageAmount: 3728,
+    incomeThreshold: 27749,
+    reductionRate: 0.15,
+    creditRate: 0.108,
+  },
+  SK: {
+    // #2026-sk-age-amount = $5,727 (federal-style indexation). threshold/reductionRate carried (DOC GAP).
+    ageAmount: 5727,
+    incomeThreshold: 41933,
+    reductionRate: 0.15,
+    creditRate: 0.105,
+  },
+  YT: {
+    // #2026-yt-age-amount = follows federal $9,208. threshold/reductionRate carried (DOC GAP).
+    ageAmount: 9208,
+    incomeThreshold: 45522,
+    reductionRate: 0.15,
+    creditRate: 0.064,
+  },
+  NT: {
+    // #2026-nt-age-amount = $7,956 (2.0% indexation 2026). threshold/reductionRate carried (DOC GAP).
+    ageAmount: 7956,
+    incomeThreshold: 44324,
+    reductionRate: 0.15,
+    creditRate: 0.059,
+  },
+  NU: {
+    // #2026-nu-age-amount = $14,068 (highest in Canada). threshold/reductionRate carried (DOC GAP).
+    ageAmount: 14068,
+    incomeThreshold: 45522,
+    reductionRate: 0.15,
+    creditRate: 0.04,
+  },
+} as const;
+
+/**
+ * Pension Income Credit Parameters (2026)
+ *
+ * maxAmount DOLLAR values updated to doc-19 §5 provincial pension-income
+ * amounts. creditRate is each province's lowest-bracket rate (unchanged from
+ * 2025). Provinces not enumerated in doc-19 §5 keep the $1,000 default the
+ * engine already falls back to.
+ *
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-on-pension-income-amount
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-ab-pension-income-amount
+ * @see docs/source-of-truth/04-tax-engine.md - Pension Income Credit
+ */
+export const PENSION_INCOME_CREDIT_2026 = {
+  federal: {
+    // #2026-fed-pension-income-amount = $2,000 (unchanged base; value @14% = $280).
+    maxAmount: 2000,
+    creditRate: 0.15,
+    maxCredit: 300,
+  },
+  ON: {
+    // #2026-on-pension-income-amount = $1,796.
+    maxAmount: 1796,
+    creditRate: 0.0505,
+  },
+  BC: {
+    // #2026-bc-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.0506,
+  },
+  AB: {
+    // #2026-ab-pension-income-amount = $1,667.
+    maxAmount: 1667,
+    creditRate: 0.1,
+  },
+  NL: {
+    // #2026-nl-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.087,
+  },
+  NS: {
+    // #2026-ns-pension-income-amount = $1,173.
+    maxAmount: 1173,
+    creditRate: 0.0879,
+  },
+  NB: {
+    // #2026-nb-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.094,
+  },
+  PE: {
+    // #2026-pe-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.0965,
+  },
+  MB: {
+    // #2026-mb-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.108,
+  },
+  SK: {
+    // #2026-sk-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.105,
+  },
+  YT: {
+    // #2026-yt-pension-income-amount = follows federal $2,000.
+    maxAmount: 2000,
+    creditRate: 0.064,
+  },
+  NT: {
+    // #2026-nt-pension-income-amount = $1,000.
+    maxAmount: 1000,
+    creditRate: 0.059,
+  },
+  NU: {
+    // #2026-nu-pension-income-amount = $2,000.
+    maxAmount: 2000,
+    creditRate: 0.04,
+  },
+} as const;
+
+/**
+ * Quebec Age, Retirement Income, and Living-Alone Credit (AREL) — 2026
+ *
+ * Dollar amounts updated to doc-19 §5 Quebec figures: ageAmount $3,470,
+ * retirementIncomeAmount (Quebec pension amount) $3,470, living-alone (age-65)
+ * supplement $1,225. creditRate 14% per doc-19 §5 (Quebec lowest bracket rate,
+ * Schedule B). threshold/reductionRate are a DOC GAP — doc 19 does not table
+ * the 2026 AREL family-net-income phase-out threshold or reduction rate, so
+ * both are carried forward from AREL_2024. livingAloneAmount remains DEFERRED
+ * (no livesAlone input surface in the engine).
+ *
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-qc-age-amount
+ * @see docs/source-of-truth/19-benefits-tax-credits-2026.md#2026-qc-pension-income-amount
+ * @see docs/source-of-truth/04-tax-engine.md - Quebec AREL credit
+ */
+export const AREL_2026 = {
+  QC: {
+    ageAmount: 3470, // #2026-qc-age-amount
+    retirementIncomeAmount: 3470, // #2026-qc-pension-income-amount
+    livingAloneAmount: 1225, // #2026-qc-age-amount living-alone supplement; DEFERRED
+    threshold: 38945, // DOC GAP — carried from AREL_2024
+    reductionRate: 0.1875, // DOC GAP — carried from AREL_2024
+    creditRate: 0.14,
+  },
+} as const;
+
+/**
+ * Structural shapes for the year-aware credit accessors. The 2024 and 2026
+ * tables share a per-province shape but differ in which provinces they
+ * enumerate (2026 adds AB), so the accessors return an indexable record rather
+ * than `typeof <const>` to keep every enumerated province honestly accessible.
+ */
+export interface AgeCreditEntry {
+  ageAmount: number;
+  incomeThreshold: number;
+  reductionRate: number;
+  creditRate: number;
+}
+export interface PensionCreditEntry {
+  maxAmount: number;
+  creditRate: number;
+  maxCredit?: number;
+}
+export interface ARELEntry {
+  ageAmount: number;
+  retirementIncomeAmount: number;
+  livingAloneAmount: number;
+  threshold: number;
+  reductionRate: number;
+  creditRate: number;
+}
+
+/**
+ * Year-aware accessors for credit tables. 2026+ returns the doc-19 2026 set;
+ * earlier years return the 2024 set (the only prior-tabled credit set).
+ */
+export function getAgeCreditTable(year: number): Record<string, AgeCreditEntry> {
+  if (year >= 2026) return AGE_CREDIT_2026;
+  return AGE_CREDIT_2024;
+}
+
+export function getPensionIncomeCreditTable(year: number): Record<string, PensionCreditEntry> {
+  if (year >= 2026) return PENSION_INCOME_CREDIT_2026;
+  return PENSION_INCOME_CREDIT_2024;
+}
+
+export function getARELTable(year: number): { QC: ARELEntry } {
+  if (year >= 2026) return AREL_2026;
+  return AREL_2024;
+}

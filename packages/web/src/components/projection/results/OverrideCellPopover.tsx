@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions, eqeqeq */
+/* eslint-disable eqeqeq */
 'use client';
 
 // @see docs/source-of-truth/14-visualization-ux.md — editable cell popover
@@ -388,10 +388,10 @@ export function OverrideCellPopover(props: OverrideCellPopoverProps) {
   // field; the shorter heading avoids ambiguity in the DOM (see 01-07-SUMMARY.md deviation).
   const headingText =
     secondaryField != null
-      ? `RRIF/RRSP — ${year}`
+      ? `RRIF/RRSP — ${String(year)}`
       : field === 'spending'
-        ? `Living Expenses — ${year}`
-        : `${label} — ${year}`;
+        ? `Living Expenses — ${String(year)}`
+        : `${label} — ${String(year)}`;
 
   // Accessible trigger label (used on the default trigger button).
   const triggerAriaLabel = `Edit ${label} — current value ${formatCurrency(currentDisplayValue)}`;

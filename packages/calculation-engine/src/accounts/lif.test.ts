@@ -399,8 +399,12 @@ describe('LIF Module', () => {
       expect(rate85).toBeCloseTo(8.51, 1); // 8.51%
     });
 
-    it('should return 0 for ages below 65', () => {
-      expect(getLIFMinimumRateForAge(60)).toBe(0);
+    it('should apply CRA pre-71 factor 1/(90-age) for ages below 65 (RRIF-007, audit B-05)', () => {
+      // getLIFMinimumRateForAge delegates to getRRIFMinimumRate, which now returns
+      // the CRA pre-71 factor 1/(90-age)*100 instead of a zero floor. The LIF
+      // minimum-REQUIRED gate (age >= 72) still lives in calculateLIFMinimumWithdrawal.
+      expect(getLIFMinimumRateForAge(60)).toBeCloseTo((1 / 30) * 100, 4); // ~3.333%
+      expect(getLIFMinimumRateForAge(60)).toBeGreaterThan(0);
     });
   });
 

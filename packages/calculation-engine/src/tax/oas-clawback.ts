@@ -5,29 +5,31 @@
  */
 import { OAS_CLAWBACK_THRESHOLDS, OAS_RATES } from '@retireops/shared';
 
+/**
+ * Resolve the tabled OAS clawback threshold set for `year`.
+ *
+ * Fallback rule (audit A-06): pick the largest tabled year that is <= `year`;
+ * when `year` predates the earliest tabled year, clamp to that earliest year.
+ * Exact keys resolve to themselves (they are the largest year <= themselves).
+ * Years past the latest tabled year resolve to the latest set (callers index
+ * those forward via buildTaxYearParams; this function only supplies the base).
+ */
 function getOASClawbackThresholdSet(year: number) {
   const knownYears = Object.keys(OAS_CLAWBACK_THRESHOLDS)
     .map(Number)
     .sort((a, b) => a - b);
-  const latestKnownYear = knownYears[knownYears.length - 1];
-  if (latestKnownYear === undefined) {
+  const earliestKnownYear = knownYears[0];
+  if (earliestKnownYear === undefined) {
     throw new Error('OAS clawback thresholds are not configured');
   }
-  let fallbackYear = latestKnownYear;
 
-  for (let index = knownYears.length - 1; index >= 0; index--) {
-    const knownYear = knownYears[index];
-    if (knownYear !== undefined && knownYear <= year) {
-      fallbackYear = knownYear;
-      break;
-    }
+  // Largest tabled year <= year; clamp to the earliest when year is below range.
+  let resolvedYear = earliestKnownYear;
+  for (const knownYear of knownYears) {
+    if (knownYear <= year) resolvedYear = knownYear;
   }
 
-  if (Object.hasOwn(OAS_CLAWBACK_THRESHOLDS, year)) {
-    return OAS_CLAWBACK_THRESHOLDS[year as keyof typeof OAS_CLAWBACK_THRESHOLDS];
-  }
-
-  return OAS_CLAWBACK_THRESHOLDS[fallbackYear as keyof typeof OAS_CLAWBACK_THRESHOLDS];
+  return OAS_CLAWBACK_THRESHOLDS[resolvedYear as keyof typeof OAS_CLAWBACK_THRESHOLDS];
 }
 
 /**

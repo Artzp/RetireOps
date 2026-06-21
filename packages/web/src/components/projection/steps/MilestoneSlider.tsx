@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import { useRef, useCallback, useEffect, useState } from 'react';
@@ -142,7 +141,7 @@ export function MilestoneSlider({
         {/* Fill */}
         <div
           className="absolute left-0 top-0 h-2 bg-ds-primary rounded-full pointer-events-none"
-          style={{ width: `${fillPercent}%` }}
+          style={{ width: `${String(fillPercent)}%` }}
         />
 
         {/* Thumb */}
@@ -156,7 +155,7 @@ export function MilestoneSlider({
           aria-valuemax={max}
           tabIndex={0}
           className="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-ds-primary border-2 border-ds-on-primary shadow-md cursor-grab active:cursor-grabbing focus:outline-none focus:ring-4 focus:ring-ds-tertiary-fixed/40 transition-shadow"
-          style={{ left: `calc(${fillPercent}% - 12px)` }}
+          style={{ left: `calc(${String(fillPercent)}% - 12px)` }}
           onMouseDown={handleThumbMouseDown}
           onKeyDown={handleKeyDown}
         />
@@ -172,7 +171,7 @@ export function MilestoneSlider({
               <div
                 key={age}
                 className="absolute flex flex-col items-center"
-                style={{ left: `${tickPercent}%`, transform: 'translateX(-50%)' }}
+                style={{ left: `${String(tickPercent)}%`, transform: 'translateX(-50%)' }}
               >
                 <div className="w-px h-1 bg-ds-outline-variant" />
                 <span className="text-xs text-muted-foreground mt-0.5">{age}</span>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Worker } from 'bullmq';
 import { config } from './config.js';
 import { logger } from './logger.js';
@@ -26,30 +25,9 @@ projectionWorker.on('error', (err) => {
   logger.error('Projection worker error', { error: err.message });
 });
 
-// Scenario comparison worker
-const scenarioWorker = new Worker(
-  'scenario-comparison',
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async (job) => {
-    const { projectionId, scenarioIds } = job.data;
-    logger.info('Processing scenario comparison', { projectionId, scenarioIds });
-    throw new Error(
-      'Scenario comparison queue is not implemented. Use the synchronous profile-scenario comparison API.'
-    );
-  },
-  {
-    connection: redisConnection,
-    concurrency: config.WORKER_CONCURRENCY,
-  }
-);
-
-scenarioWorker.on('ready', () => {
-  logger.info('Scenario comparison worker ready');
-});
-
-scenarioWorker.on('error', (err) => {
-  logger.error('Scenario comparison worker error', { error: err.message });
-});
+// NOTE: the former 'scenario-comparison' worker was removed (audit C-07).
+// It unconditionally threw "not implemented" and no API route ever enqueued
+// to its queue — comparison is synchronous in profile-scenario.service.ts.
 
 // Monte Carlo worker (lower concurrency due to CPU intensity)
 const monteCarloWorker = new Worker('monte-carlo', processMonteCarloJob, {
@@ -70,7 +48,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
   try {
-    await Promise.all([projectionWorker.close(), scenarioWorker.close(), monteCarloWorker.close()]);
+    await Promise.all([projectionWorker.close(), monteCarloWorker.close()]);
     logger.info('Workers closed');
 
     await db.destroy();

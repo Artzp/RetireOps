@@ -2781,4 +2781,123 @@ describe('projection-transformer', () => {
       expect('ledgerWarnings' in transformed.summary).toBe(false);
     });
   });
+
+  /**
+   * Audit D-02 — lifetime pension-split and bracket-fill aggregates are
+   * computed server-side and surfaced on FrontendSummary so the UI no longer
+   * re-derives them with client-side reduces over the rows.
+   */
+  describe('summary lifetime aggregates (audit D-02)', () => {
+    function makeBracketFillRetireeFixture(): FrontendInputData {
+      // Retired 68-year-old in ON with $300k RRSP, OAS deferred out of range,
+      // zero spending — mirrors projection-transformer.bracket-fill.test.ts so
+      // we know bracket-fill SHOULD fire.
+      return {
+        personalInfo: {
+          dateOfBirth: '1958-01-01',
+          province: 'ON',
+          retirementAge: 60,
+          lifeExpectancy: 85,
+        },
+        accounts: [
+          { type: 'RRSP', balance: 300000 },
+          { type: 'TFSA', balance: 10000 },
+          { type: 'NonRegistered', balance: 20000 },
+        ],
+        incomeSources: [],
+        governmentBenefits: { cppStartAge: 65, oasStartAge: 99 },
+        expenses: { currentAnnualExpenses: 0, retirementAnnualExpenses: 0 },
+        assumptions: { inflationRate: 0, investmentReturnRate: 0 },
+      };
+    }
+
+    it('surfaces totalBracketFillWithdrawals equal to the row sum on single projections', () => {
+      const applied = applyScenarioDecisions(makeBracketFillRetireeFixture(), {
+        bracketFill: { enabled: true },
+      });
+      const output = runSingleProjection(transformToProjectionInput(applied));
+      const result = transformToFrontendOutput(output, 85);
+
+      const rowSum = result.projectionRows.reduce(
+        (sum, r) => sum + (r.bracketFillWithdrawal ?? 0) + (r.spouseBracketFillWithdrawal ?? 0),
+        0
+      );
+      expect(rowSum).toBeGreaterThan(0);
+      expect(result.summary.totalBracketFillWithdrawals).toBe(Math.round(rowSum));
+      // Pension splitting is couple-only — must stay absent on single summaries.
+      expect(result.summary.totalPensionSplitSavings).toBeUndefined();
+    });
+
+    it('sets totalBracketFillWithdrawals to 0 (not undefined) when the optimizer never fires', () => {
+      const applied = applyScenarioDecisions(makeBracketFillRetireeFixture(), {});
+      const output = runSingleProjection(transformToProjectionInput(applied));
+      const result = transformToFrontendOutput(output, 85);
+
+      // Always-set on newly computed projections so the UI's legacy-cache
+      // fallback (`??`) only triggers for result_data predating the field.
+      expect(result.summary.totalBracketFillWithdrawals).toBe(0);
+    });
+
+    it('surfaces the engine couple summary pension-split aggregate and household bracket-fill sum', () => {
+      const coupleInput = transformToProjectionInput({
+        personalInfo: {
+          dateOfBirth: '1960-01-01',
+          province: 'ON',
+          maritalStatus: 'married',
+          retirementAge: 65,
+          lifeExpectancy: 90,
+        },
+        spouse: {
+          dateOfBirth: '1962-01-01',
+          province: 'ON',
+          retirementAge: 65,
+          lifeExpectancy: 90,
+          expectedCppAt65: 6000,
+          cppStartAge: 65,
+          oasStartAge: 65,
+        },
+        accounts: [
+          { type: 'RRSP', balance: 500000, belongsTo: 'primary' },
+          { type: 'TFSA', balance: 50000, belongsTo: 'primary' },
+          { type: 'NonRegistered', balance: 50000, belongsTo: 'primary' },
+          { type: 'RRSP', balance: 20000, belongsTo: 'spouse' },
+        ],
+        incomeSources: [
+          // Large primary-only employer pension creates the asymmetry that makes
+          // pension splitting save household tax.
+          {
+            type: 'pension',
+            name: 'DB pension',
+            annualAmount: 60000,
+            startAge: 65,
+          },
+        ],
+        governmentBenefits: { cppStartAge: 65, oasStartAge: 65, estimatedCppAmount: 12000 },
+        expenses: { currentAnnualExpenses: 60000, retirementAnnualExpenses: 60000 },
+        assumptions: { inflationRate: 0, investmentReturnRate: 4 },
+      });
+
+      const output = runCoupleProjection(coupleInput);
+      const result = transformToFrontendOutput(output, 90);
+
+      // The summary aggregate must come from the engine couple summary, not a
+      // client-side re-derivation.
+      expect(result.summary.totalPensionSplitSavings).toBe(
+        Math.round(output.summary.totalPensionSplitTaxSavings)
+      );
+      expect(result.summary.totalPensionSplitSavings).toBeGreaterThan(0);
+      // And it must equal the per-row sum the engine summed from.
+      const rowSplitSum = result.projectionRows.reduce(
+        (sum, r) => sum + (r.pensionSplitTaxSavings ?? 0),
+        0
+      );
+      expect(result.summary.totalPensionSplitSavings).toBe(Math.round(rowSplitSum));
+
+      const rowBracketSum = result.projectionRows.reduce(
+        (sum, r) => sum + (r.bracketFillWithdrawal ?? 0) + (r.spouseBracketFillWithdrawal ?? 0),
+        0
+      );
+      expect(result.summary.totalBracketFillWithdrawals).toBe(Math.round(rowBracketSum));
+    });
+  });
 });

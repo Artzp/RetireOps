@@ -367,6 +367,6 @@ async function migrate() {
 }
 
 migrate().catch((err: unknown) => {
-  console.error('Migration failed:', err);
+  logger.error('Migration failed:', err);
   process.exit(1);
 });

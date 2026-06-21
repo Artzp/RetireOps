@@ -99,14 +99,16 @@ Decumulation account that an RRSP converts to at age 71. Mandatory minimum withd
 
 ### Rules
 
-| Rule ID  | Rule                       | Value/Formula                                        |
-| -------- | -------------------------- | ---------------------------------------------------- |
-| RRIF-001 | Minimum Withdrawal Start   | Year after conversion (typically age 72)             |
-| RRIF-002 | Minimum Withdrawal Formula | balance × minimum_percentage(age)                    |
-| RRIF-003 | Maximum Withdrawal         | None (unlimited)                                     |
-| RRIF-004 | Tax Treatment - Withdrawal | 100% taxable as ordinary income                      |
-| RRIF-005 | Younger Spouse Election    | Can use younger spouse's age for minimum calculation |
-| RRIF-006 | Tax Treatment - Growth     | Tax-deferred                                         |
+| Rule ID  | Rule                       | Value/Formula                                                                               |
+| -------- | -------------------------- | ------------------------------------------------------------------------------------------- |
+| RRIF-001 | Minimum Withdrawal Start   | Year after conversion (typically age 72)                                                    |
+| RRIF-002 | Minimum Withdrawal Formula | balance × minimum_percentage(age)                                                           |
+| RRIF-003 | Maximum Withdrawal         | None (unlimited)                                                                            |
+| RRIF-004 | Tax Treatment - Withdrawal | 100% taxable as ordinary income                                                             |
+| RRIF-005 | Younger Spouse Election    | Can use younger spouse's age for minimum calculation                                        |
+| RRIF-006 | Tax Treatment - Growth     | Tax-deferred                                                                                |
+| RRIF-007 | Pre-71 Minimum Factor      | For ages below 71, factor = 1 ÷ (90 − age); never zero                                      |
+| RRIF-008 | Younger Spouse Under 71    | Election rate uses RRIF-007 when younger age < 71; the minimum is reduced, never eliminated |
 
 ### Minimum Withdrawal Percentages
 
@@ -129,6 +131,35 @@ Decumulation account that an RRSP converts to at age 71. Mandatory minimum withd
 | 79  | 6.58%      | 94  | 18.79%     |
 | 95+ | 20.00%     |
 
+#### Pre-71 Minimum Factor (RRIF-007)
+
+For ages below 71 the CRA-prescribed minimum factor is the general formula:
+
+```
+minimum_factor(age) = 1 / (90 − age)
+```
+
+This is the standard pre-71 factor under Income Tax Regulation 7308(4). The
+percentages tabled above for ages 65–70 are exactly this formula
+(e.g. age 65 → 1/25 = 4.00%, age 70 → 1/20 = 5.00%); ages 71–94 use the
+separately prescribed table values, and 95+ is fixed at 20.00%. The factor is
+**never zero** for any age — a young age produces a small minimum, not no
+minimum.
+
+This formula only becomes reachable for ages below 65 through the
+younger-spouse election (RRIF-005 / RRIF-008): a normal RRIF holder has no
+mandatory minimum until the year after conversion (RRIF-001, age ~72), so the
+owner's own age is never below 65 when a minimum is computed.
+
+#### Younger Spouse Under 71 (RRIF-008)
+
+When the younger-spouse election (RRIF-005) is in effect and the younger
+spouse's age is below 71, the minimum factor for the lookup is
+`1 / (90 − younger_age)` per RRIF-007 — the election **reduces** the forced
+minimum, it does **not** eliminate it. The owner's own RRIF-001 start gate
+(age ≥ 72) still determines whether a minimum applies at all; only the rate
+lookup uses the younger age.
+
 ### Data Model
 
 ```
@@ -148,6 +179,10 @@ Minimum withdrawal = $500,000 × 5.40% = $27,000
 
 Example: Using younger spouse age (spouse is 65, owner is 72)
 Minimum withdrawal = $500,000 × 4.00% = $20,000
+
+Example: Using younger spouse age below 65 (spouse is 60, owner is 72) — RRIF-007/RRIF-008
+Minimum factor = 1 / (90 − 60) = 1/30 ≈ 3.333%
+Minimum withdrawal = $500,000 × 3.333% ≈ $16,667
 ```
 
 ---

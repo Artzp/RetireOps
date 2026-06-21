@@ -15,16 +15,16 @@ import {
   isEligibleForOAS,
   isReceivingOAS,
 } from './oas.js';
-import {
-  OAS_ADJUSTMENT_FACTORS,
-  BENEFIT_AMOUNTS_2024,
-  OAS_BENEFIT_AMOUNTS,
-} from '@retireops/shared';
+import { OAS_ADJUSTMENT_FACTORS } from '@retireops/shared';
+import { OAS_2026 } from '@retireops/shared/benefits';
 
 const { DEFERRAL_INCREASE_PER_MONTH } = OAS_ADJUSTMENT_FACTORS;
 
-const MAX_OAS_65_74 = BENEFIT_AMOUNTS_2024.oas.maxAnnualAge65To74;
-const MAX_OAS_75_PLUS = BENEFIT_AMOUNTS_2024.oas.maxAnnualAge75Plus;
+// Engine now consumes the citation-anchored 2026 Q2 amounts (same source as the
+// wizard estimator) per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74.
+// Annual = monthly × 12: 743.05 × 12 = 8916.60, 817.36 × 12 = 9808.32.
+const MAX_OAS_65_74 = OAS_2026.q2.maxMonthlyAge65To74 * 12;
+const MAX_OAS_75_PLUS = OAS_2026.q2.maxMonthlyAge75Plus * 12;
 
 describe('OAS Benefit Calculations', () => {
   describe('calculateOASResidencyFactor', () => {
@@ -129,28 +129,23 @@ describe('OAS Benefit Calculations', () => {
       expect(entitlement75).toBe(MAX_OAS_75_PLUS);
     });
 
-    it('should use year-aware age 65-74 amounts', () => {
-      expect(calculateOASEntitlement(40, 2024, 65)).toBe(
-        OAS_BENEFIT_AMOUNTS[2024].maxAnnualAge65To74
-      );
-      expect(calculateOASEntitlement(40, 2025, 65)).toBe(
-        OAS_BENEFIT_AMOUNTS[2025].maxAnnualAge65To74
-      );
-      expect(calculateOASEntitlement(40, 2026, 65)).toBe(
-        OAS_BENEFIT_AMOUNTS[2026].maxAnnualAge65To74
-      );
+    it('should use the 2026 Q2 anchored age 65-74 amount', () => {
+      // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74
+      expect(calculateOASEntitlement(40, 2026, 65)).toBeCloseTo(MAX_OAS_65_74, 6);
+      expect(calculateOASEntitlement(40, 2026, 65)).toBeCloseTo(8916.6, 2);
     });
 
-    it('should use year-aware age 75+ amounts', () => {
-      expect(calculateOASEntitlement(40, 2024, 75)).toBe(
-        OAS_BENEFIT_AMOUNTS[2024].maxAnnualAge75Plus
-      );
-      expect(calculateOASEntitlement(40, 2025, 75)).toBe(
-        OAS_BENEFIT_AMOUNTS[2025].maxAnnualAge75Plus
-      );
-      expect(calculateOASEntitlement(40, 2026, 75)).toBe(
-        OAS_BENEFIT_AMOUNTS[2026].maxAnnualAge75Plus
-      );
+    it('should use the 2026 Q2 anchored age 75+ amount', () => {
+      // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-75plus
+      expect(calculateOASEntitlement(40, 2026, 75)).toBeCloseTo(MAX_OAS_75_PLUS, 6);
+      expect(calculateOASEntitlement(40, 2026, 75)).toBeCloseTo(9808.32, 2);
+    });
+
+    it('should fall back to the nearest known table for years before 2026', () => {
+      // The year-indexed structure falls back to the earliest known table (2026)
+      // for out-of-range earlier years; mainline projections are always >= 2026.
+      expect(calculateOASEntitlement(40, 2024, 65)).toBeCloseTo(MAX_OAS_65_74, 6);
+      expect(calculateOASEntitlement(40, 2025, 65)).toBeCloseTo(MAX_OAS_65_74, 6);
     });
   });
 
@@ -299,6 +294,21 @@ describe('OAS Benefit Calculations', () => {
       expect(benefit).toBe(MAX_OAS_65_74);
       expect(benefit).toBeGreaterThan(8000);
       expect(benefit).toBeLessThan(9000);
+    });
+
+    it('A-01 regression: 2026 single-person gross OAS equals OAS_2026.q2 × 12', () => {
+      // Engine and wizard must agree on gross OAS for the same person.
+      // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-65to74
+      const grossOAS = calculateOASBenefit(40, 65, 65, 2026);
+      expect(grossOAS).toBeCloseTo(OAS_2026.q2.maxMonthlyAge65To74 * 12, 6);
+      expect(grossOAS).toBeCloseTo(8916.6, 2);
+    });
+
+    it('A-01 regression: 2026 age-75+ gross OAS equals OAS_2026.q2 75+ × 12', () => {
+      // per docs/source-of-truth/18-pensions-2026.md#2026-oas-q2-amount-75plus
+      const grossOAS75 = calculateOASBenefit(40, 65, 75, 2026);
+      expect(grossOAS75).toBeCloseTo(OAS_2026.q2.maxMonthlyAge75Plus * 12, 6);
+      expect(grossOAS75).toBeCloseTo(9808.32, 2);
     });
 
     it('should calculate immigrant with partial residency', () => {

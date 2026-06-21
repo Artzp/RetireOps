@@ -19,9 +19,11 @@ vi.mock('@retireops/calculation-engine', () => ({
 
 vi.mock('../services/projection-transformer.js', () => ({
   transformToProjectionInput: vi.fn().mockImplementation((input: unknown) => input),
+  // Mirrors the real transformer's output shape: yearlyResults + summary
+  // (extractScenarioResult in the compare path requires both — audit C-03).
   transformToFrontendOutput: vi
     .fn()
-    .mockReturnValue({ years: [], summary: { probabilityOfSuccess: 0.85 } }),
+    .mockReturnValue({ yearlyResults: [], summary: { probabilityOfSuccess: 0.85 } }),
 }));
 
 vi.mock('../services/profile-assembler.js', () => ({
@@ -524,6 +526,61 @@ describe('POST /api/profile/scenarios/compare', () => {
     expect(response.body.data.baseProjection).toBeTruthy();
     expect(Array.isArray(response.body.data.comparison.metrics)).toBe(true);
     expect(response.body.data.comparison.metrics.length).toBe(6);
+
+    // Audit C-03/C-10: completed scenarios carry resultStatus 'ok' and no warnings.
+    expect(response.body.data.baseProjection.resultStatus).toBe('ok');
+    expect(response.body.data.scenarios[0].resultStatus).toBe('ok');
+    expect(response.body.data.warnings).toEqual([]);
+  });
+
+  /**
+   * Audit C-03/C-10: when the base scenario has never been run (result_data null),
+   * the comparison must flag it — resultStatus 'missing' on baseProjection and a
+   * top-level warning — instead of silently rendering empty base columns.
+   */
+  it('flags a base scenario without results via resultStatus and warnings', async () => {
+    await seedProfile();
+
+    const listResponse = await request(app)
+      .get('/api/profile/scenarios')
+      .set('Authorization', 'Bearer test-token');
+    const baseId = listResponse.body.data[0].id;
+
+    // Two non-base clones, both run to completed. Base is NOT run (pending, no result_data).
+    const cloneA = await request(app)
+      .post(`/api/profile/scenarios/${baseId}/clone`)
+      .set('Authorization', 'Bearer test-token');
+    const cloneAId = cloneA.body.data.id;
+    const cloneB = await request(app)
+      .post(`/api/profile/scenarios/${baseId}/clone`)
+      .set('Authorization', 'Bearer test-token');
+    const cloneBId = cloneB.body.data.id;
+
+    await request(app)
+      .post(`/api/profile/scenarios/${cloneAId}/run`)
+      .set('Authorization', 'Bearer test-token');
+    await request(app)
+      .post(`/api/profile/scenarios/${cloneBId}/run`)
+      .set('Authorization', 'Bearer test-token');
+
+    const response = await request(app)
+      .post('/api/profile/scenarios/compare')
+      .set('Authorization', 'Bearer test-token')
+      .send({ ids: [cloneAId, cloneBId] });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.baseProjection.resultStatus).toBe('missing');
+    expect(response.body.data.scenarios).toHaveLength(2);
+    expect(response.body.data.scenarios[0].resultStatus).toBe('ok');
+    expect(response.body.data.scenarios[1].resultStatus).toBe('ok');
+    expect(response.body.data.warnings).toHaveLength(1);
+    expect(response.body.data.warnings[0]).toContain('Base scenario');
+    expect(response.body.data.warnings[0]).toContain('no stored results');
+
+    // Base metric values are null (not fabricated) when the base has no results.
+    for (const metric of response.body.data.comparison.metrics) {
+      expect(metric.base).toBeNull();
+    }
   });
 
   /**
@@ -544,6 +601,34 @@ describe('POST /api/profile/scenarios/compare', () => {
       .send({ ids: [baseId] });
 
     expect(response.status).toBe(400);
+  });
+
+  /**
+   * Audit C-04: a request resolving to zero non-base columns (here: the base
+   * scenario id twice) must be rejected with 409 instead of returning a
+   * structurally valid but empty comparison.
+   */
+  it('returns 409 for a base-only comparison request', async () => {
+    await seedProfile();
+
+    const listResponse = await request(app)
+      .get('/api/profile/scenarios')
+      .set('Authorization', 'Bearer test-token');
+    const baseId = listResponse.body.data[0].id;
+
+    // Run the base so the "all completed" guard passes and the base-only
+    // guard is what rejects the request.
+    await request(app)
+      .post(`/api/profile/scenarios/${baseId}/run`)
+      .set('Authorization', 'Bearer test-token');
+
+    const response = await request(app)
+      .post('/api/profile/scenarios/compare')
+      .set('Authorization', 'Bearer test-token')
+      .send({ ids: [baseId, baseId] });
+
+    expect(response.status).toBe(409);
+    expect(JSON.stringify(response.body)).toContain('non-base');
   });
 
   /**
@@ -836,7 +921,7 @@ describe('Phase 1 overrides — POST /run returns overrides sidecar (D-22)', () 
       summary: { peakNetWorth: 500000, averageRetirementIncome: 30000 },
     } as unknown as ReturnType<typeof runProjection>);
     vi.mocked(transformToFrontendOutput).mockReturnValue({
-      years: [],
+      yearlyResults: [],
       summary: { probabilityOfSuccess: 0.85 },
     } as unknown as ReturnType<typeof transformToFrontendOutput>);
   });

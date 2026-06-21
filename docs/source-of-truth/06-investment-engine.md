@@ -13,16 +13,35 @@ The Investment Engine projects how savings and investments grow over time. It ap
 | Parameter        | Type       | Default | Range      | Description                                |
 | ---------------- | ---------- | ------- | ---------- | ------------------------------------------ |
 | `nominal_return` | Percentage | 5.0%    | 0-15%      | Expected annual return including inflation |
-| `real_return`    | Percentage | 2.5%    | -2% to 12% | Expected return net of inflation           |
+| `real_return`    | Percentage | ~2.439% | -2% to 12% | Expected return net of inflation           |
 | `inflation_rate` | Percentage | 2.5%    | 0-10%      | General inflation assumption               |
 
-**Relationship:**
+**Relationship (CANONICAL — Fisher equation):**
+
+The real/nominal conversion uses the **Fisher equation**, which is the
+canonical convention for this engine. The linear approximation
+(`real ≈ nominal − inflation`) is NOT used by the engine and is only a
+rough mental shortcut — it overstates the real return by the cross-product
+term `real × inflation`, a gap that grows with inflation.
 
 ```
-real_return = nominal_return - inflation_rate
-// Or equivalently:
-nominal_return = real_return + inflation_rate
+// Fisher equation (canonical — implemented in
+// packages/calculation-engine/src/investments/returns.ts):
+(1 + real_return) = (1 + nominal_return) / (1 + inflation_rate)
+real_return       = (1 + nominal_return) / (1 + inflation_rate) − 1
+
+// Inverse:
+(1 + nominal_return) = (1 + real_return) × (1 + inflation_rate)
+nominal_return       = (1 + real_return) × (1 + inflation_rate) − 1
 ```
+
+**Default-table note:** with `nominal_return = 5.0%` and
+`inflation_rate = 2.5%`, the Fisher real return is
+`1.05 / 1.025 − 1 = 0.02439… ≈ 2.439%` — NOT the 2.5% the linear identity
+would give. `createDefaultAssumptions` / `createAssumptionsFromProfile`
+populate `real_return` via `nominalToRealReturn` (Fisher), so any surface
+that displays or back-solves a "real return" must use the Fisher value, not
+`nominal − inflation`.
 
 ### Return by Risk Profile
 

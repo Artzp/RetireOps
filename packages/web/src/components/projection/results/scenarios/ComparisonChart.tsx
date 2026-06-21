@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import {
@@ -53,7 +52,7 @@ export function ComparisonChart({ yearlyComparison, scenarioNames }: ComparisonC
   const formatYAxis = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value}`;
+    return `$${String(value)}`;
   };
 
   const formatTooltipValue = (value: number) => {
@@ -76,7 +75,7 @@ export function ComparisonChart({ yearlyComparison, scenarioNames }: ComparisonC
               formatTooltipValue(typeof value === 'number' ? value : 0),
               name === 'base' ? 'Base Plan' : (scenarioNames[String(name)] ?? String(name ?? '')),
             ]}
-            labelFormatter={(label) => `Age ${label}`}
+            labelFormatter={(label: unknown) => `Age ${String(label)}`}
             contentStyle={{
               backgroundColor: 'hsl(var(--background))',
               border: '1px solid hsl(var(--border))',

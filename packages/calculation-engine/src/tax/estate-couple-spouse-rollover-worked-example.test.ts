@@ -105,8 +105,12 @@ describe('VR-EST-DEEMED-001 / VR-EST-SPOUSE-ROLLOVER-001 worked example — coup
 
     // Spouse terminal-return totals.
     expect(spouseEvent.grossEstate).toBeCloseTo(602_472.9050880938, 2);
-    expect(spouseEvent.terminalTaxes).toBeCloseTo(101_715.06347003629, 2);
-    expect(spouseEvent.netEstate).toBeCloseTo(500_757.8416180576, 2);
+    // 2026 tax-table refresh (audit A-09/A-10): spouse deemed-disposition terminal
+    // tax recomputed on the doc-19 2026 federal+Ontario credits/brackets (higher
+    // BPA/age/pension credits + 2.0%-indexed brackets → ~$565 lower terminal tax).
+    // grossEstate/deemedDisposition unchanged (balance-driven, not tax-driven).
+    expect(spouseEvent.terminalTaxes).toBeCloseTo(101_149.75597003628, 2);
+    expect(spouseEvent.netEstate).toBeCloseTo(501_323.14911805757, 2);
     expect(spouseEvent.wasSpouseRolloverApplied).toBe(false);
   });
 
@@ -117,8 +121,9 @@ describe('VR-EST-DEEMED-001 / VR-EST-SPOUSE-ROLLOVER-001 worked example — coup
     expect(summary.netEstate).toBeDefined();
 
     expect(summary.grossEstate!).toBeCloseTo(602_472.9050880938, 2);
-    expect(summary.terminalTaxes!).toBeCloseTo(101_715.06347003629, 2);
-    expect(summary.netEstate!).toBeCloseTo(500_757.8416180576, 2);
+    // 2026 tax-table refresh (audit A-09/A-10) — see VR-EST-DEEMED-001 above.
+    expect(summary.terminalTaxes!).toBeCloseTo(101_149.75597003628, 2);
+    expect(summary.netEstate!).toBeCloseTo(501_323.14911805757, 2);
 
     // Identity: netEstate ≈ grossEstate − terminalTaxes.
     expect(summary.netEstate!).toBeCloseTo(summary.grossEstate! - summary.terminalTaxes!, 2);

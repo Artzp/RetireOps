@@ -1,8 +1,10 @@
 /**
  * CPP/QPP Benefit Calculations
  * @see docs/source-of-truth/05-government-benefits.md - CPP/QPP Section
+ * @see docs/source-of-truth/18-pensions-2026.md - CPP 2026 parameter values
  */
-import { CPP_ADJUSTMENT_FACTORS, BENEFIT_AMOUNTS_2024 } from '@retireops/shared';
+import { CPP_ADJUSTMENT_FACTORS } from '@retireops/shared';
+import { CPP_2026 } from '@retireops/shared/benefits';
 
 const {
   EARLY_REDUCTION_PER_MONTH,
@@ -59,7 +61,8 @@ export function indexCPPBenefit(baseAmount: number, inflationRate: number, years
  */
 export function calculateCPPSurvivorBenefit(
   deceasedBenefitAmount: number,
-  maxCPPAmount: number = BENEFIT_AMOUNTS_2024.cpp.maxAnnualAt65
+  // per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
+  maxCPPAmount: number = CPP_2026.maxRetirementPensionAnnual // 1_507.65 × 12 = 18_091.80
 ): number {
   // Survivor receives 60% of deceased's benefit
   const survivorAmount = deceasedBenefitAmount * 0.6;
@@ -74,7 +77,8 @@ export function calculateCPPSurvivorBenefit(
 export function calculateCombinedCPP(
   ownBenefit: number,
   survivorBenefit: number,
-  maxCPPAmount: number = BENEFIT_AMOUNTS_2024.cpp.maxAnnualAt65
+  // per docs/source-of-truth/18-pensions-2026.md#2026-cpp-max-retirement-pension
+  maxCPPAmount: number = CPP_2026.maxRetirementPensionAnnual // 1_507.65 × 12 = 18_091.80
 ): number {
   return Math.min(ownBenefit + survivorBenefit, maxCPPAmount);
 }
@@ -131,16 +135,6 @@ export function calculateCPPBreakEvenAge(
   const yearsToCatchUp = headStartTotal / annualDifference;
 
   return laterAge + yearsToCatchUp;
-}
-
-/**
- * Estimate CPP at 65 based on percentage of maximum
- * For users who don't have their Service Canada statement
- */
-export function estimateCPPAt65(percentageOfMax: number, _year: number = 2024): number {
-  // TODO: Add historical year support when data is available
-  const maxAmount = BENEFIT_AMOUNTS_2024.cpp.maxAnnualAt65;
-  return maxAmount * (percentageOfMax / 100);
 }
 
 /**

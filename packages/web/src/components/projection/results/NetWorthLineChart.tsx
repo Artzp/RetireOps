@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import type { ProjectionYearRow } from '@retireops/shared';
@@ -23,7 +22,7 @@ const formatYAxis = (value: number): string => {
   if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
   if (value <= -1_000_000) return `-$${(Math.abs(value) / 1_000_000).toFixed(1)}M`;
   if (value <= -1_000) return `-$${(Math.abs(value) / 1_000).toFixed(0)}K`;
-  return `$${value}`;
+  return `$${String(value)}`;
 };
 
 export function NetWorthLineChart({
@@ -61,7 +60,7 @@ export function NetWorthLineChart({
                   }).format(typeof value === 'number' ? value : 0),
                   seriesLabel,
                 ]}
-                labelFormatter={(label) => `Year: ${label}`}
+                labelFormatter={(label: unknown) => `Year: ${String(label)}`}
                 contentStyle={{
                   backgroundColor: 'hsl(var(--background))',
                   border: '1px solid hsl(var(--border))',

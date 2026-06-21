@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 
 import type { FundedStatus, RemediationPlan } from '@retireops/shared';
 
@@ -48,7 +47,7 @@ export function FundedStatusIndicator({
           title: 'Underfunded',
           body:
             depletionAge !== null
-              ? `Your portfolio is projected to run out at age ${depletionAge}.`
+              ? `Your portfolio is projected to run out at age ${String(depletionAge)}.`
               : 'Your portfolio is projected to run out before your life expectancy.',
         };
       default: {

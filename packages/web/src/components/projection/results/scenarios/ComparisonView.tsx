@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +14,8 @@ interface ComparisonViewProps {
 
 function formatMetricValue(name: string, value: number | null): string {
   if (value === null) return '-';
-  if (name === 'probabilityOfSuccess') return `${value}%`;
-  if (name === 'portfolioLongevity' || name === 'yearsInRetirement') return `${value}`;
+  if (name === 'probabilityOfSuccess') return `${String(value)}%`;
+  if (name === 'portfolioLongevity' || name === 'yearsInRetirement') return String(value);
   return formatCurrency(value);
 }
 
