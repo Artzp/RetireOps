@@ -24,7 +24,7 @@
     "@retireops/calculation-engine": "workspace:*",
     "@retireops/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
-    "bullmq": "^5.77.3",
+    "bullmq": "^5.79.1",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "express": "^5.0.0",
