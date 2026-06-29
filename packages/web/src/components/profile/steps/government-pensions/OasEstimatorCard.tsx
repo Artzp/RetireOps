@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Callout } from '@/components/ui/callout';
 import { SourceCitationLink } from '@/components/citations/SourceCitationLink';
+import { pensionCitation, PENSION_CITATION_DOC } from './pension-citation';
 import { ConfidenceChip } from '@/components/citations/ConfidenceChip';
 import { YearTag } from '@/components/citations/YearTag';
 import { roundAnnual, roundMonthly } from '@/lib/precision';
@@ -31,13 +32,12 @@ interface OasEstimatorCardProps {
 
 // Source-of-truth anchors. OAS is a single federal program (no provincial routing), so a single
 // constant suffices — distinct from CPP's CPP/QPP anchor map.
-const OAS_CITATION_DOC = '18-pensions-2026.md';
 const OAS_AMOUNT_ANCHOR = '2026-oas-q2-amount-65to74';
 const OAS_DEFERRAL_ANCHOR = '2026-oas-deferral-rate';
 const OAS_CLAWBACK_ANCHOR = '2026-oas-clawback-threshold';
 
 function buildOasCitation(): string {
-  return `docs/source-of-truth/${OAS_CITATION_DOC}#${OAS_AMOUNT_ANCHOR}`;
+  return pensionCitation(OAS_AMOUNT_ANCHOR);
 }
 
 /**
@@ -369,7 +369,11 @@ export function OasEstimatorCard({ person, provinceLabel }: OasEstimatorCardProp
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold">OAS — Estimate</h3>
-          <SourceCitationLink doc={OAS_CITATION_DOC} anchor={OAS_AMOUNT_ANCHOR} label="2026 OAS" />
+          <SourceCitationLink
+            doc={PENSION_CITATION_DOC}
+            anchor={OAS_AMOUNT_ANCHOR}
+            label="2026 OAS"
+          />
         </div>
       </header>
 
@@ -403,7 +407,7 @@ export function OasEstimatorCard({ person, provinceLabel }: OasEstimatorCardProp
           <p className="text-xs text-muted-foreground">
             Between 65 and 70. Deferring past 65 increases your OAS by 0.6% per month.{' '}
             <SourceCitationLink
-              doc={OAS_CITATION_DOC}
+              doc={PENSION_CITATION_DOC}
               anchor={OAS_DEFERRAL_ANCHOR}
               label="deferral rate"
             />
@@ -454,7 +458,7 @@ export function OasEstimatorCard({ person, provinceLabel }: OasEstimatorCardProp
               'en-CA'
             )}. The wizard shows GROSS OAS; the engine subtracts the recovery tax in your year-by-year projection. `}
             <SourceCitationLink
-              doc={OAS_CITATION_DOC}
+              doc={PENSION_CITATION_DOC}
               anchor={OAS_CLAWBACK_ANCHOR}
               label="threshold source"
             />

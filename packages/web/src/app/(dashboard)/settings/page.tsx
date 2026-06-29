@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
 import { SpouseProfileForm } from '@/components/SpouseProfileForm';
+import { PROVINCES } from '@/components/profile/lib/profile-constants';
 import { api } from '@/lib/api/client';
 import {
   readSettingsAssumptions,
@@ -24,23 +25,7 @@ import {
   SETTINGS_SAFE_ASSUMPTIONS,
 } from '@/lib/settings-assumptions';
 
-const provinces = [
-  { code: 'AB', name: 'Alberta' },
-  { code: 'BC', name: 'British Columbia' },
-  { code: 'MB', name: 'Manitoba' },
-  { code: 'NB', name: 'New Brunswick' },
-  { code: 'NL', name: 'Newfoundland and Labrador' },
-  { code: 'NS', name: 'Nova Scotia' },
-  { code: 'NT', name: 'Northwest Territories' },
-  { code: 'NU', name: 'Nunavut' },
-  { code: 'ON', name: 'Ontario' },
-  { code: 'PE', name: 'Prince Edward Island' },
-  { code: 'QC', name: 'Quebec' },
-  { code: 'SK', name: 'Saskatchewan' },
-  { code: 'YT', name: 'Yukon' },
-] as const;
-
-type ProvinceCode = (typeof provinces)[number]['code'];
+type ProvinceCode = (typeof PROVINCES)[number]['code'];
 type Theme = 'light' | 'dark' | 'system';
 type MaritalStatus = 'single' | 'married' | 'commonLaw' | 'divorced' | 'widowed' | null;
 
@@ -347,7 +332,7 @@ export default function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {provinces.map((province) => (
+                      {PROVINCES.map((province) => (
                         <SelectItem key={province.code} value={province.code}>
                           {province.name}
                         </SelectItem>

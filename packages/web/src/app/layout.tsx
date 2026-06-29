@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access */
 import type { Metadata } from 'next';
-import { inter, manrope } from '@/lib/fonts';
+import { inter, manrope, cormorantGaramond } from '@/lib/fonts';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -12,7 +11,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${manrope.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${manrope.variable} ${cormorantGaramond.variable}`}
+    >
       <body className="font-sans antialiased">
         {children}
         <Toaster />

@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AlertTriangle } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 /**
  * SolverResultCard — displays the result of a reverse-calculator solver run.
@@ -20,14 +21,6 @@ import { AlertTriangle } from 'lucide-react';
 
 interface SolverResultCardProps {
   result: SolverResult;
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString('en-CA', {
-    style: 'currency',
-    currency: 'CAD',
-    maximumFractionDigits: 0,
-  });
 }
 
 function formatHeroAnswer(result: SolverResult): string {

@@ -5,15 +5,8 @@ import Link from 'next/link';
 import { FileText, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { listProfileScenarios } from '@/lib/api/profile-scenarios';
+import { formatDate } from '@/lib/utils';
 import type { ProfileScenarioListItem } from '@/types/profile-scenario';
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 export default function ReportsPage() {
   const [scenarios, setScenarios] = useState<ProfileScenarioListItem[] | null>(null);

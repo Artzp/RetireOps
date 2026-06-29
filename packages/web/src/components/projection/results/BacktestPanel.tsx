@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { AlertCircle, ChevronDown, ChevronUp, Loader2, Play, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 const BacktestChartDynamic = dynamic(
   () => import('./BacktestChart').then((m) => ({ default: m.BacktestChart })),
@@ -34,14 +35,6 @@ interface BacktestPanelProps {
   scenarioId: string;
   /** Baseline yearly net-worth data from the main projection (for chart overlay) */
   baselineNetWorth?: Array<{ year: number; value: number }>;
-}
-
-function formatCurrency(v: number): string {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: 'CAD',
-    maximumFractionDigits: 0,
-  }).format(v);
 }
 
 function formatPct(v: number): string {

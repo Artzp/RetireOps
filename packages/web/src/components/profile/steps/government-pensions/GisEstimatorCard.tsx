@@ -49,6 +49,7 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Callout } from '@/components/ui/callout';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SourceCitationLink } from '@/components/citations/SourceCitationLink';
+import { pensionCitation, PENSION_CITATION_DOC } from './pension-citation';
 import { ConfidenceChip } from '@/components/citations/ConfidenceChip';
 import { YearTag } from '@/components/citations/YearTag';
 import { roundAnnual, roundMonthly } from '@/lib/precision';
@@ -68,7 +69,6 @@ interface GisEstimatorCardProps {
 // ── Tier-routing helpers (outside component — pure, no closures) ─────────────
 
 /** D-07: Locked tier-to-anchor map per UI-SPEC §Interaction Contract "Tier-routed citation chip". */
-const GIS_CITATION_DOC = '18-pensions-2026.md';
 const GIS_TIER_ANCHORS: Record<GisTier, string> = {
   single: '2026-gis-q2-single-max',
   'couple-on-oas': '2026-gis-q2-spouse-on-oas-max',
@@ -77,7 +77,7 @@ const GIS_TIER_ANCHORS: Record<GisTier, string> = {
 };
 
 function buildGisCitation(tier: GisTier): string {
-  return `docs/source-of-truth/${GIS_CITATION_DOC}#${GIS_TIER_ANCHORS[tier]}`;
+  return pensionCitation(GIS_TIER_ANCHORS[tier]);
 }
 
 /** D-04 / UI-SPEC §Copywriting "Tier labels". */
@@ -354,7 +354,7 @@ export function GisEstimatorCard({ person, provinceLabel }: GisEstimatorCardProp
           GIS — Estimate
         </h3>
         <SourceCitationLink
-          doc={GIS_CITATION_DOC}
+          doc={PENSION_CITATION_DOC}
           anchor={GIS_TIER_ANCHORS[tier]}
           label="2026 GIS parameters"
         />

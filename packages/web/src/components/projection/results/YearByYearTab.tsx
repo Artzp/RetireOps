@@ -20,16 +20,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { MoneyCell } from './MoneyCell';
-import { OverrideDot, ClampBadge, ShortfallBadge } from './YearByYearBadges';
-import { OverrideCellPopover } from './OverrideCellPopover';
-import type { OverrideField } from './OverrideCellPopover';
+import { ShortfallBadge } from './YearByYearBadges';
 import {
   selectVisibleSuperGroupColumns,
   SUPER_GROUP_ORDER,
@@ -40,26 +36,47 @@ import {
   type SparseFlags,
   type SuperGroup,
 } from './year-by-year-columns';
-import { createRenderCell } from './year-by-year-render-cell';
+import {
+  createRenderCell,
+  type EditableCellProps,
+  type ReadOnlyCellProps,
+} from './year-by-year-render-cell';
+import { EditableCell as EditableCellImpl } from './YearByYearEditableCell';
+import { ReadOnlyCell as ReadOnlyCellImpl } from './YearByYearReadOnlyCell';
+import { TimingComparisonTable } from './YearByYearTimingComparison';
 import { useOverrideEditor } from '@/hooks/useOverrideEditor';
 import {
   previewProfileScenarioDecisions,
   runProfileScenario,
   updateDecisions,
 } from '@/lib/api/profile-scenarios';
-import type {
-  ProjectionYearRow,
-  ProvenanceCellMetadata,
-  ScenarioDecisions,
-} from '@retireops/shared/types';
-import { CPP_RATES, OAS_RATES } from '@retireops/shared/constants';
+import type { ProjectionYearRow, ScenarioDecisions } from '@retireops/shared/types';
 import type { ProfileScenarioDetail } from '@/types/profile-scenario';
 // Phase 30 Plan 02 — explainability popover + override summary banner.
 // `explainYearWithdrawals` is the inline web mirror of the shared adapter
 // (packages/web/src/lib/explain-adapter.ts — byte-equivalent copy).
 import { explainYearWithdrawals, type WithdrawalReason } from '@/lib/explain-adapter';
-import WithdrawalReasonPopover from '@/components/projection/withdrawal/WithdrawalReasonPopover';
 import OverrideSummary from '@/components/projection/withdrawal/OverrideSummary';
+import {
+  inferStartAge,
+  inferLifeExpectancy,
+  formatPercentInput,
+  parsePercentInput,
+  calculateCppFactor,
+  calculateOasFactor,
+  calculateBreakevenAge,
+  inferBenefitAt65,
+  summarizeTimingOutcomes,
+  extractProjectionRows,
+  rankTimingComparisons,
+  timingPatchForPreset,
+  timingPatchFromDraft,
+  type TimingDraft,
+  type TimingPreset,
+  type TimingComparisonRow,
+} from './year-by-year-helpers';
+import { TimingAgeSelect, TimingNumberInput } from './year-by-year-timing-inputs';
+import { CPP_START_AGES, OAS_START_AGES } from '@/lib/pension-ages';
 
 interface YearByYearTabProps {
   data: {
@@ -80,52 +97,7 @@ interface YearByYearTabProps {
 }
 
 type ColumnGroup = 'income' | 'taxes' | 'spending' | 'balances';
-type TimingDraft = {
-  cppStartAge: number;
-  oasStartAge: number;
-  lifeExpectancy: number;
-  expectedCPPAt65: number;
-  yearsOfResidence: number;
-  spouseCppStartAge?: number;
-  spouseOasStartAge?: number;
-  spouseLifeExpectancy?: number;
-  spouseExpectedCPPAt65?: number;
-  spouseYearsOfResidence?: number;
-};
-type TimingPreset = {
-  id: string;
-  label: string;
-  cppStartAge: number;
-  oasStartAge: number;
-  spouseCppStartAge?: number;
-  spouseOasStartAge?: number;
-};
-type TimingOutcomeSummary = {
-  finalHouseholdNetWorth: number;
-  finalEstateOrNetWorth: number;
-  depletion:
-    | {
-        age: number;
-        year: number;
-      }
-    | undefined;
-  lifetimeCpp: number;
-  lifetimeOas: number;
-  lifetimeIncome: number;
-  lifetimeOasClawback: number;
-  totalTaxesPaid: number;
-  fundedStatus: string;
-};
-type TimingComparisonRow = TimingPreset &
-  TimingOutcomeSummary & {
-    rank: number;
-    isBest: boolean;
-    cppBreakevenAge?: number;
-    oasBreakevenAge?: number;
-  };
 
-const CPP_START_AGES = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70] as const;
-const OAS_START_AGES = [65, 66, 67, 68, 69, 70] as const;
 const LIFE_EXPECTANCY_AGES = [
   65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
   89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
@@ -147,306 +119,6 @@ const TIMING_PRESETS: ReadonlyArray<TimingPreset> = [
 
 const DEFAULT_DRAW_DOWN_ORDER = ['nonReg', 'tfsa', 'rrsp', 'rrif'] as const;
 const SURPLUS_DESTINATIONS = ['nonreg', 'tfsa', 'rrsp', 'rrif'] as const;
-
-function inferStartAge(
-  rows: ProjectionYearRow[],
-  incomeKey: keyof ProjectionYearRow,
-  ageKey: 'age' | 'spouseAge',
-  fallback: number
-): number {
-  const row = rows.find((r) => {
-    const value = r[incomeKey];
-    return typeof value === 'number' && value > 0;
-  });
-  const age = row?.[ageKey];
-  return typeof age === 'number' ? age : fallback;
-}
-
-function inferLifeExpectancy(
-  rows: ProjectionYearRow[],
-  ageKey: 'age' | 'spouseAge',
-  fallback: number
-): number {
-  const ages = rows
-    .map((row) => row[ageKey])
-    .filter((age): age is number => typeof age === 'number');
-  return ages.length > 0 ? Math.max(...ages) : fallback;
-}
-
-function ageLabel(age: number): string {
-  return `Age ${String(age)}`;
-}
-
-function formatPercentInput(value: number | undefined): string {
-  return value === undefined ? '' : String((value * 100).toFixed(2).replace(/\.?0+$/, ''));
-}
-
-function parsePercentInput(value: string): number | undefined {
-  if (value.trim() === '') return undefined;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric / 100 : undefined;
-}
-
-function calculateCppFactor(startAge: number): number {
-  if (startAge < 65) return 1 - (65 - startAge) * 12 * CPP_RATES.earlyReductionPerMonth;
-  if (startAge > 65) return 1 + (startAge - 65) * 12 * CPP_RATES.lateIncreasePerMonth;
-  return 1;
-}
-
-function calculateOasFactor(startAge: number): number {
-  if (startAge <= 65) return 1;
-  return 1 + Math.min(startAge - 65, 5) * 12 * OAS_RATES.deferralIncreasePerMonth;
-}
-
-function calculateBreakevenAge(
-  baseAmount: number,
-  earlyAge: number,
-  laterAge: number,
-  earlyFactor: number,
-  laterFactor: number
-): number | undefined {
-  if (laterAge <= earlyAge || baseAmount <= 0) return undefined;
-  const earlyBenefit = baseAmount * earlyFactor;
-  const laterBenefit = baseAmount * laterFactor;
-  const annualDifference = laterBenefit - earlyBenefit;
-  if (annualDifference <= 0) return undefined;
-  return laterAge + (earlyBenefit * (laterAge - earlyAge)) / annualDifference;
-}
-
-function formatBreakeven(age: number | undefined): string {
-  return age === undefined || !Number.isFinite(age) ? 'n/a' : `Age ${age.toFixed(1)}`;
-}
-
-function inferBenefitAt65(
-  rows: ProjectionYearRow[],
-  incomeKey: keyof ProjectionYearRow,
-  ageKey: 'age' | 'spouseAge',
-  startAge: number,
-  fallback: number
-): number {
-  const row = rows.find((r) => {
-    const value = r[incomeKey];
-    return typeof value === 'number' && value > 0;
-  });
-  const amount = row?.[incomeKey];
-  if (typeof amount !== 'number' || amount <= 0) return fallback;
-  if (incomeKey === 'cppIncome' || incomeKey === 'spouseCppIncome') {
-    return Math.round(amount / calculateCppFactor(startAge));
-  }
-  const age = row?.[ageKey];
-  const age75Factor = typeof age === 'number' && age >= 75 ? 1 + OAS_RATES.age75Bonus : 1;
-  return Math.round(amount / calculateOasFactor(startAge) / age75Factor);
-}
-
-function summarizeTimingOutcomes(rows: ProjectionYearRow[]): TimingOutcomeSummary {
-  const finalRow = rows.at(-1);
-  const depletionRow = rows.find((row) => row.householdNetWorth <= 0);
-  const finalEstate =
-    typeof (finalRow as ProjectionYearRow & { netEstate?: number }).netEstate === 'number'
-      ? (finalRow as ProjectionYearRow & { netEstate: number }).netEstate
-      : (finalRow?.householdNetWorth ?? 0);
-
-  return rows.reduce<TimingOutcomeSummary>(
-    (summary, row) => ({
-      ...summary,
-      lifetimeCpp: summary.lifetimeCpp + row.cppIncome + (row.spouseCppIncome ?? 0),
-      lifetimeOas: summary.lifetimeOas + row.oasIncome + (row.spouseOasIncome ?? 0),
-      lifetimeIncome:
-        summary.lifetimeIncome +
-        (row.householdTotalIncome ??
-          row.totalGrossIncome +
-            (row.spouseEmploymentIncome ?? 0) +
-            (row.spousePensionIncome ?? 0)),
-      lifetimeOasClawback:
-        summary.lifetimeOasClawback + row.oasClawback + (row.spouseOasClawback ?? 0),
-      totalTaxesPaid:
-        summary.totalTaxesPaid +
-        (row.householdTotalTax ?? row.totalTax + (row.spouseTotalTax ?? 0)),
-    }),
-    {
-      finalHouseholdNetWorth: finalRow?.householdNetWorth ?? 0,
-      finalEstateOrNetWorth: finalEstate,
-      depletion:
-        depletionRow !== undefined
-          ? {
-              age: depletionRow.age,
-              year: depletionRow.year,
-            }
-          : undefined,
-      lifetimeCpp: 0,
-      lifetimeOas: 0,
-      lifetimeIncome: 0,
-      lifetimeOasClawback: 0,
-      totalTaxesPaid: 0,
-      fundedStatus: depletionRow === undefined ? 'Funded' : 'Depletes',
-    }
-  );
-}
-
-// Exported for unit tests (audit D-05) — not part of the component surface.
-export function extractProjectionRows(resultData: Record<string, unknown>): ProjectionYearRow[] {
-  const rows = resultData['projectionRows'] ?? resultData['yearlyResults'] ?? resultData['years'];
-  if (!Array.isArray(rows)) return [];
-  // Audit D-05: legacy persisted result_data (pre-ENG-03 shapes reached via the
-  // yearlyResults/years fallbacks above) can lack fields that are required on
-  // current ProjectionYearRow, notably householdTotalTax. Fill it by mirroring
-  // the transformer/engine definition — householdTotalTax = householdTaxesPaid
-  // = primary taxesPaid + spouse taxesPaid, i.e. row.totalTax +
-  // row.spouseTotalTax; OAS recovery tax is intentionally NOT included (it is
-  // tracked separately in totalTaxIncludingOASRecovery). See
-  // packages/api/src/services/projection-transformer.ts (householdTotalTax:
-  // year.householdTaxesPaid) and calculation-engine couple-calculator.ts
-  // (householdTaxesPaid = primaryFinal.taxesPaid + spouseFinal.taxesPaid).
-  // Deliberately a targeted field-fill, not a zod parse — this runs on the
-  // render hot path for every preview comparison.
-  return (rows as ProjectionYearRow[]).map((row) => {
-    if (typeof row.householdTotalTax === 'number') return row;
-    const totalTax = typeof row.totalTax === 'number' ? row.totalTax : 0;
-    const spouseTotalTax = typeof row.spouseTotalTax === 'number' ? row.spouseTotalTax : 0;
-    return { ...row, householdTotalTax: totalTax + spouseTotalTax };
-  });
-}
-
-function compareTimingOutcomes(a: TimingOutcomeSummary, b: TimingOutcomeSummary): number {
-  if (a.depletion === undefined && b.depletion !== undefined) return -1;
-  if (a.depletion !== undefined && b.depletion === undefined) return 1;
-  if (a.depletion !== undefined && b.depletion !== undefined) {
-    const depletionDelta = b.depletion.age - a.depletion.age || b.depletion.year - a.depletion.year;
-    if (depletionDelta !== 0) return depletionDelta;
-  }
-  return b.finalHouseholdNetWorth - a.finalHouseholdNetWorth;
-}
-
-function rankTimingComparisons(
-  rows: Array<
-    TimingPreset & TimingOutcomeSummary & { cppBreakevenAge?: number; oasBreakevenAge?: number }
-  >
-): TimingComparisonRow[] {
-  const ranked = [...rows].sort(compareTimingOutcomes);
-  return ranked.map((row, index) => ({ ...row, rank: index + 1, isBest: index === 0 }));
-}
-
-function timingPatchForPreset(
-  preset: TimingPreset,
-  isCouple: boolean,
-  lifeDraft?: TimingDraft
-): Record<string, number> {
-  return {
-    cppStartAge: preset.cppStartAge,
-    oasStartAge: preset.oasStartAge,
-    ...(lifeDraft !== undefined ? { lifeExpectancy: lifeDraft.lifeExpectancy } : {}),
-    ...(lifeDraft !== undefined ? { expectedCPPAt65: lifeDraft.expectedCPPAt65 } : {}),
-    ...(lifeDraft !== undefined ? { yearsOfResidence: lifeDraft.yearsOfResidence } : {}),
-    ...(isCouple
-      ? {
-          spouseCppStartAge: preset.spouseCppStartAge ?? preset.cppStartAge,
-          spouseOasStartAge: preset.spouseOasStartAge ?? preset.oasStartAge,
-          ...(lifeDraft?.spouseLifeExpectancy !== undefined
-            ? { spouseLifeExpectancy: lifeDraft.spouseLifeExpectancy }
-            : {}),
-          ...(lifeDraft?.spouseExpectedCPPAt65 !== undefined
-            ? { spouseExpectedCPPAt65: lifeDraft.spouseExpectedCPPAt65 }
-            : {}),
-          ...(lifeDraft?.spouseYearsOfResidence !== undefined
-            ? { spouseYearsOfResidence: lifeDraft.spouseYearsOfResidence }
-            : {}),
-        }
-      : {}),
-  };
-}
-
-function timingPatchFromDraft(draft: TimingDraft, isCouple: boolean): Record<string, number> {
-  return {
-    cppStartAge: draft.cppStartAge,
-    oasStartAge: draft.oasStartAge,
-    lifeExpectancy: draft.lifeExpectancy,
-    expectedCPPAt65: draft.expectedCPPAt65,
-    yearsOfResidence: draft.yearsOfResidence,
-    ...(isCouple && draft.spouseCppStartAge !== undefined
-      ? { spouseCppStartAge: draft.spouseCppStartAge }
-      : {}),
-    ...(isCouple && draft.spouseOasStartAge !== undefined
-      ? { spouseOasStartAge: draft.spouseOasStartAge }
-      : {}),
-    ...(isCouple && draft.spouseLifeExpectancy !== undefined
-      ? { spouseLifeExpectancy: draft.spouseLifeExpectancy }
-      : {}),
-    ...(isCouple && draft.spouseExpectedCPPAt65 !== undefined
-      ? { spouseExpectedCPPAt65: draft.spouseExpectedCPPAt65 }
-      : {}),
-    ...(isCouple && draft.spouseYearsOfResidence !== undefined
-      ? { spouseYearsOfResidence: draft.spouseYearsOfResidence }
-      : {}),
-  };
-}
-
-function TimingAgeSelect({
-  label,
-  value,
-  ages,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  ages: ReadonlyArray<number>;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="min-w-28 text-xs font-medium text-ds-on-surface-variant">
-      <span className="mb-1 block">{label}</span>
-      <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger
-          aria-label={`${label} age`}
-          className="h-9 rounded-sm border-ds-outline-variant bg-ds-surface text-xs"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {ages.map((age) => (
-            <SelectItem key={age} value={String(age)}>
-              {ageLabel(age)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-function TimingNumberInput({
-  label,
-  value,
-  onChange,
-  min = 0,
-  max,
-  step = 1,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-}) {
-  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  return (
-    <div className="min-w-32 text-xs font-medium text-ds-on-surface-variant">
-      <Label htmlFor={id} className="mb-1 block text-xs">
-        {label}
-      </Label>
-      <Input
-        id={id}
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="h-9 rounded-sm border-ds-outline-variant bg-ds-surface text-xs"
-      />
-    </div>
-  );
-}
 
 export function YearByYearTab({
   data,
@@ -605,29 +277,6 @@ export function YearByYearTab({
     }
     return map;
   }, [rows, editor.decisions.withdrawalOverrides]);
-
-  /**
-   * Map an EditableCell `field` token to the `WithdrawalReason['account']`
-   * discriminator used by the adapter. Returns undefined for `'spending'`
-   * (no withdrawal-reason surface) and for `'rrsp'` (today's row contract
-   * does not surface a standalone RRSP withdrawal cell — RRSP merges into
-   * the RRIF cell via `isMergedRrifCell`, and the adapter's RRSP branch is
-   * reserved for future row-shape extensions).
-   */
-  const fieldToAccount = (field: string): WithdrawalReason['account'] | undefined => {
-    switch (field) {
-      case 'rrif':
-        return 'rrif';
-      case 'tfsa':
-        return 'tfsa';
-      case 'nonreg':
-        return 'nonReg';
-      case 'lif':
-        return 'lif';
-      default:
-        return undefined;
-    }
-  };
 
   const timingDefaults = useMemo<TimingDraft>(
     () => ({
@@ -987,393 +636,39 @@ export function YearByYearTab({
   } as const;
 
   // ---------------------------------------------------------------------------
-  // EditableCell — renders cell content with optional interactive trigger + popover
-  // At lg+: wraps in a role="button" with aria-label; below lg: plain text (D-31)
-  // Phase 2: gains optional `provenance` prop forwarded to OverrideCellPopover (D-43).
-  // ---------------------------------------------------------------------------
-  function EditableCell({
-    year,
-    field,
-    label,
-    value,
-    activeOverride,
-    clampInfo,
-    secondaryField,
-    provenance,
-    owner = 'primary',
-  }: {
-    year: number;
-    field: OverrideField;
-    label: string;
-    value: number;
-    activeOverride?: { amount: number; applyForward: boolean } | undefined;
-    clampInfo?: { requestedReal: number; clampedTo: number } | undefined;
-    secondaryField?: import('./OverrideCellPopover').SecondaryField | undefined;
-    /** Phase 2: provenance metadata passed down to OverrideCellPopover (D-43). */
-    provenance?: ProvenanceCellMetadata | undefined;
-    /** Owner discriminator for couple projections — defaults to primary. */
-    owner?: 'primary' | 'spouse';
-  }) {
-    const isOpen =
-      editor.openCell?.year === year &&
-      editor.openCell?.field === field &&
-      (editor.openCell?.owner ?? 'primary') === owner;
+  // EditableCell — wrapper binding the host's editor / isEditable / reasonsByCell /
+  // rows into the extracted impl (./YearByYearEditableCell), then injected into
+  // createRenderCell below. Intentionally NOT memoized: like the original nested
+  // component it must re-create each render so cells always read the current
+  // editor state — otherwise the override popover won't reopen on click (a
+  // memoized closure would capture a stale `editor`).
+  const EditableCell = (props: EditableCellProps) => (
+    <EditableCellImpl
+      {...props}
+      editor={editor}
+      isEditable={isEditable}
+      reasonsByCell={reasonsByCell}
+      rows={rows}
+    />
+  );
 
-    // Indicators
-    const hasActiveOverride = activeOverride !== undefined;
-    const isClamped = clampInfo !== undefined;
-
-    // Phase 30 Plan 02 — explainability reasons for THIS cell (non-spending,
-    // non-zero withdrawal fields only). Falls back to an empty list which the
-    // WithdrawalReasonPopover renders as null.
-    const account = fieldToAccount(field);
-    const cellReasons: WithdrawalReason[] =
-      account !== undefined && value > 0
-        ? (reasonsByCell.get(`${String(year)}::${account}`) ?? [])
-        : [];
-    const reasonRow = rows.find((r) => r.year === year);
-
-    // D5 fix: split cellContent into cellValue (edit trigger contents) and
-    // reasonTrigger (sibling), so the popover <button> is never nested inside
-    // the role="button" editable trigger — invalid nested-interactive HTML.
-    const cellValue = (
-      <span className="inline-flex items-center justify-end gap-0.5">
-        <MoneyCell value={value} />
-        {hasActiveOverride && !isClamped && <OverrideDot />}
-        {isClamped && (
-          <ClampBadge requestedReal={clampInfo.requestedReal} clampedTo={clampInfo.clampedTo} />
-        )}
-        {hasActiveOverride && isClamped && <OverrideDot />}
-      </span>
-    );
-
-    const reasonTrigger =
-      cellReasons.length > 0 && reasonRow !== undefined ? (
-        <WithdrawalReasonPopover
-          reasons={cellReasons}
-          row={reasonRow}
-          triggerLabel={`${label} ${String(year)}`}
-        >
-          ?
-        </WithdrawalReasonPopover>
-      ) : null;
-
-    if (!isEditable) {
-      // No override editor props — render read-only.
-      return (
-        <span className="inline-flex items-center justify-end gap-0.5">
-          {cellValue}
-          {reasonTrigger}
-        </span>
-      );
-    }
-
-    const editAriaLabel = `Edit ${label} ${String(year)} - current value ${formatCurrency(value)}`;
-
-    return (
-      <span className="inline-flex items-center justify-end gap-0.5 w-full">
-        {/* Mobile (<lg): plain text only, no interaction (D-31). Reason trigger
-            is desktop-only to avoid duplicate DOM elements that break .first()
-            focus in Playwright (hidden elements cannot receive focus). */}
-        <span className="lg:hidden inline-flex items-center gap-0.5">{cellValue}</span>
-
-        {/* Desktop (lg+): editable trigger + sibling reason trigger */}
-        <span className="hidden lg:inline-flex items-center justify-end gap-0.5 w-full">
-          {/* Popover — Radix anchors to the trigger via PopoverTrigger asChild */}
-          <OverrideCellPopover
-            year={year}
-            field={field}
-            label={`${label} — ${String(year)}`}
-            currentDisplayValue={value}
-            activeOverride={activeOverride}
-            clampInfo={clampInfo}
-            open={isOpen}
-            onOpenChange={(open) => {
-              if (!open) editor.closePopover();
-              else editor.openPopover(year, field, owner);
-            }}
-            onSave={async (payload) => {
-              await editor.savePopover({
-                primary: {
-                  amount: payload.primary.amount,
-                  applyForward: payload.primary.applyForward,
-                },
-                secondary: payload.secondary
-                  ? {
-                      amount: payload.secondary.amount,
-                      applyForward: payload.secondary.applyForward,
-                    }
-                  : undefined,
-              });
-            }}
-            onCancel={() => editor.closePopover()}
-            secondaryField={secondaryField}
-            provenance={provenance}
-            mode="editable"
-            // PHASE 3 (D-69, D-73): wire Remove button to hook's removeOverride()
-            onRemoveOverride={
-              activeOverride !== undefined
-                ? async () => editor.removeOverride(field, year, owner)
-                : undefined
-            }
-            isRemoving={editor.isRemoving}
-          >
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label={editAriaLabel}
-              aria-haspopup="dialog"
-              aria-expanded={isOpen}
-              className="min-h-7 cursor-pointer inline-flex items-center justify-end rounded-sm px-1 hover:bg-ds-primary/10 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ds-primary focus-visible:ring-offset-1"
-              onClick={() => editor.openPopover(year, field, owner)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  editor.openPopover(year, field, owner);
-                }
-              }}
-            >
-              {cellValue}
-            </div>
-          </OverrideCellPopover>
-          {reasonTrigger}
-        </span>
-      </span>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // ReadOnlyCell — Phase 2 helper (D-45).
-  //
-  // Renders a clickable inspect trigger for in-scope read-only cells (federalTax,
-  // provincialTax, totalTax, totalGrossIncome) and out-of-scope cells (balances,
-  // benefits, year/age, etc.) per UI-SPEC §Cell Trigger Classification Map.
-  //
-  // - inScope=true  → mode='readonly'  — provenance section shown, no edit form (D-42)
-  // - inScope=false → mode='placeholder' — locked v4.3 placeholder copy (D-39)
-  // - Below lg: plain text only — no button, no popover (D-31 mobile read-only convention)
-  // - One popover at a time: uses editor.setOpenCell to widen openCell to string field (D-26)
-  //
-  // @see .planning/phases/02-cell-provenance/02-UI-SPEC.md §ReadOnlyCell §Cell Trigger Classification Map
-  // @see .planning/phases/02-cell-provenance/02-CONTEXT.md - D-39, D-42, D-45
-  // ---------------------------------------------------------------------------
-  function ReadOnlyCell({
-    year,
-    field,
-    displayValue,
-    label,
-    provenance,
-    inScope,
-  }: {
-    year: number;
-    /** Arbitrary column name used as popover identity key (not an OverrideField). */
-    field: string;
-    /** Pre-formatted display string, e.g. formatCurrency output. */
-    displayValue: string;
-    /** Human-readable column label, e.g. "Federal Tax". */
-    label: string;
-    /** Provenance metadata from row.provenance. Present only for in-scope fields. */
-    provenance?: ProvenanceCellMetadata | undefined;
-    /**
-     * true  → in-scope read-only cell (taxes, totalIncome) — mode='readonly'
-     * false → out-of-scope cell (balances, benefits, year/age) — mode='placeholder'
-     */
-    inScope: boolean;
-  }) {
-    const isOpen = editor.openCell?.year === year && editor.openCell?.field === field;
-    const benefitRow = rows.find((r) => r.year === year);
-    const isBenefitField = [
-      'cppIncome',
-      'oasIncome',
-      'spouseCppIncome',
-      'spouseOasIncome',
-    ].includes(field);
-
-    // UI-SPEC §Copywriting Contract (locked):
-    // in-scope:    "Inspect {label} {year} — {formattedValue}"
-    // out-of-scope: "Inspect {label} {year}" (no value announced)
-    const ariaLabel = inScope
-      ? `Inspect ${label} ${String(year)} — ${displayValue}`
-      : `Inspect ${label} ${String(year)}`;
-
-    // UI-SPEC §Color: bg-accent/20 for in-scope (inspectable), bg-accent/10 for out-of-scope (lighter)
-    const hoverBg = inScope ? 'hover:bg-accent/20' : 'hover:bg-accent/10';
-    // UI-SPEC §Out-of-Scope Cell Trigger: cursor-default for placeholder cells
-    const cursorClass = inScope ? 'cursor-pointer' : 'cursor-default';
-
-    if (isBenefitField && benefitRow !== undefined) {
-      const isSpouseBenefit = field.startsWith('spouse');
-      const isCpp = field.toLowerCase().includes('cpp');
-      const startAge = isCpp
-        ? isSpouseBenefit
-          ? (timingDraft.spouseCppStartAge ?? 65)
-          : timingDraft.cppStartAge
-        : isSpouseBenefit
-          ? (timingDraft.spouseOasStartAge ?? 65)
-          : timingDraft.oasStartAge;
-      const estimateAt65 = isCpp
-        ? isSpouseBenefit
-          ? (timingDraft.spouseExpectedCPPAt65 ?? 0)
-          : timingDraft.expectedCPPAt65
-        : inferBenefitAt65(
-            timingRows,
-            isSpouseBenefit ? 'spouseOasIncome' : 'oasIncome',
-            isSpouseBenefit ? 'spouseAge' : 'age',
-            startAge,
-            0
-          );
-      const residencyYears = isSpouseBenefit
-        ? (timingDraft.spouseYearsOfResidence ?? 40)
-        : timingDraft.yearsOfResidence;
-      const factor = isCpp ? calculateCppFactor(startAge) : calculateOasFactor(startAge);
-      const oasClawback = isSpouseBenefit
-        ? (benefitRow.spouseOasClawback ?? 0)
-        : benefitRow.oasClawback;
-      const age = isSpouseBenefit ? benefitRow.spouseAge : benefitRow.age;
-      const currentValue =
-        typeof benefitRow[field as keyof ProjectionYearRow] === 'number'
-          ? (benefitRow[field as keyof ProjectionYearRow] as number)
-          : 0;
-      const startAgeLabel = isCpp
-        ? isSpouseBenefit
-          ? 'Spouse CPP'
-          : 'CPP'
-        : isSpouseBenefit
-          ? 'Spouse OAS'
-          : 'OAS';
-
-      return (
-        <Popover
-          open={isOpen}
-          onOpenChange={(open) => {
-            if (open) editor.setOpenCell({ year, field });
-            else editor.setOpenCell(null);
-          }}
-        >
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Inspect ${label} ${String(year)}`}
-              aria-haspopup="dialog"
-              aria-expanded={isOpen}
-              className="hidden w-full cursor-pointer justify-end rounded-sm hover:bg-accent/20 focus-visible:ring-2 focus-visible:ring-ds-primary/50 focus-visible:ring-offset-1 lg:inline-flex"
-            >
-              {displayValue}
-            </button>
-          </PopoverTrigger>
-          <span className="lg:hidden">{displayValue}</span>
-          <PopoverContent className="w-80" aria-label={`${label} explanation`}>
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-ds-on-background">
-                  {label} - {year}
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {age !== undefined && age < startAge
-                    ? `${startAgeLabel} has not started yet.`
-                    : `${startAgeLabel} is paid using the scenario start age and benefit assumptions.`}
-                </p>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                <dt className="text-ds-on-surface-variant">Amount</dt>
-                <dd className="text-right tabular-nums">{formatCurrency(currentValue)}</dd>
-                <dt className="text-ds-on-surface-variant">Start age</dt>
-                <dd className="text-right tabular-nums">{startAge}</dd>
-                <dt className="text-ds-on-surface-variant">
-                  {isCpp ? 'Estimate at 65' : 'OAS at 65'}
-                </dt>
-                <dd className="text-right tabular-nums">{formatCurrency(estimateAt65)}</dd>
-                <dt className="text-ds-on-surface-variant">Adjustment factor</dt>
-                <dd className="text-right tabular-nums">{(factor * 100).toFixed(1)}%</dd>
-                {!isCpp && (
-                  <>
-                    <dt className="text-ds-on-surface-variant">Residency factor</dt>
-                    <dd className="text-right tabular-nums">
-                      {Math.min(residencyYears / 40, 1).toLocaleString('en-CA', {
-                        style: 'percent',
-                        maximumFractionDigits: 0,
-                      })}
-                    </dd>
-                    <dt className="text-ds-on-surface-variant">Clawback</dt>
-                    <dd className="text-right tabular-nums">
-                      {oasClawback > 0 ? formatCurrency(oasClawback) : 'No reduction'}
-                    </dd>
-                  </>
-                )}
-              </dl>
-              <div className="flex items-end gap-2 border-t border-ds-outline-variant pt-3">
-                <TimingAgeSelect
-                  label="Try different start age"
-                  value={startAge}
-                  ages={isCpp ? CPP_START_AGES : OAS_START_AGES}
-                  onChange={(value) => {
-                    setTimingDraft((prev) => ({
-                      ...prev,
-                      ...(isCpp
-                        ? isSpouseBenefit
-                          ? { spouseCppStartAge: value }
-                          : { cppStartAge: value }
-                        : isSpouseBenefit
-                          ? { spouseOasStartAge: value }
-                          : { oasStartAge: value }),
-                    }));
-                  }}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isTimingSaving || !scenarioId}
-                  onClick={() => void handleTimingSave()}
-                  className="h-9 rounded-sm px-3 text-xs"
-                >
-                  Apply
-                </Button>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    }
-
-    return (
-      <>
-        {/* lg+: clickable inspect trigger (D-45) */}
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          aria-haspopup="dialog"
-          aria-expanded={isOpen}
-          className={`hidden lg:inline-flex justify-end w-full ${hoverBg} ${cursorClass} focus-visible:ring-2 focus-visible:ring-ds-primary/50 focus-visible:ring-offset-1 focus-visible:rounded-sm`}
-          onClick={() => editor.setOpenCell({ year, field })}
-        >
-          {displayValue}
-        </button>
-
-        {/* Below lg: plain text only — no interaction (D-31 mobile read-only convention) */}
-        <span className="lg:hidden">{displayValue}</span>
-
-        {/* Popover — renders only when this is the open cell (D-26 one-at-a-time invariant) */}
-        {isOpen && (
-          <OverrideCellPopover
-            open={isOpen}
-            onOpenChange={(o) => {
-              if (!o) editor.setOpenCell(null);
-            }}
-            year={year}
-            field={field}
-            label={`${label} — ${String(year)}`}
-            currentDisplayValue={0}
-            onSave={async () => {
-              /* read-only/placeholder — no save path */
-            }}
-            onCancel={() => editor.setOpenCell(null)}
-            provenance={provenance}
-            mode={inScope ? 'readonly' : 'placeholder'}
-          />
-        )}
-      </>
-    );
-  }
+  // ReadOnlyCell — wrapper binding the host's editor / rows / timing state into the
+  // extracted impl (./YearByYearReadOnlyCell), used by createRenderCell + the direct
+  // JSX sites below. Plain (non-memoized) function — see the EditableCell note above:
+  // it must re-create each render so cells read current state (popovers reopen on click).
+  const ReadOnlyCell = (props: ReadOnlyCellProps) => (
+    <ReadOnlyCellImpl
+      {...props}
+      editor={editor}
+      rows={rows}
+      timingRows={timingRows}
+      timingDraft={timingDraft}
+      setTimingDraft={setTimingDraft}
+      isTimingSaving={isTimingSaving}
+      scenarioId={scenarioId}
+      onTimingSave={() => void handleTimingSave()}
+    />
+  );
 
   // ---------------------------------------------------------------------------
   // renderCell — Plan 12-04 / UI-05; factored out in Plan 12-05.
@@ -1736,93 +1031,12 @@ export function YearByYearTab({
                           </dd>
                         </div>
                       </dl>
-                      {timingComparisons.length > 0 && (
-                        <div className="overflow-x-auto border-t border-ds-outline-variant pt-3">
-                          <table
-                            className="w-full min-w-[940px] border-separate border-spacing-0 text-xs"
-                            aria-label="Pension timing comparison"
-                          >
-                            <thead className="text-left text-ds-on-surface-variant">
-                              <tr>
-                                <th className="px-2 py-1 font-medium">Rank</th>
-                                <th className="px-2 py-1 font-medium">Preset</th>
-                                <th className="px-2 py-1 text-right font-medium">
-                                  Lifetime income
-                                </th>
-                                <th className="px-2 py-1 text-right font-medium">
-                                  Final estate / NW
-                                </th>
-                                <th className="px-2 py-1 font-medium">Depletion</th>
-                                <th className="px-2 py-1 text-right font-medium">CPP + OAS</th>
-                                <th className="px-2 py-1 text-right font-medium">Clawback</th>
-                                <th className="px-2 py-1 text-right font-medium">Breakeven</th>
-                                <th className="px-2 py-1 font-medium">Funded</th>
-                                <th className="px-2 py-1 text-right font-medium">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {timingComparisons.map((row) => (
-                                <tr
-                                  key={row.id}
-                                  className={
-                                    row.isBest
-                                      ? 'bg-ds-primary-container text-ds-on-primary-container'
-                                      : 'text-ds-on-surface'
-                                  }
-                                >
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 font-medium">
-                                    {row.rank}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2">
-                                    <span className="font-medium">{row.label}</span>
-                                    <span className="ml-1 text-ds-on-surface-variant">
-                                      CPP {row.cppStartAge} / OAS {row.oasStartAge}
-                                    </span>
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right tabular-nums">
-                                    {formatCurrency(row.lifetimeIncome)}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right tabular-nums">
-                                    {formatCurrency(row.finalEstateOrNetWorth)}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 tabular-nums">
-                                    {row.depletion !== undefined
-                                      ? `Age ${String(row.depletion.age)} / ${String(
-                                          row.depletion.year
-                                        )}`
-                                      : 'Not projected'}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right tabular-nums">
-                                    {formatCurrency(row.lifetimeCpp + row.lifetimeOas)}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right tabular-nums">
-                                    {formatCurrency(row.lifetimeOasClawback)}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right tabular-nums">
-                                    CPP {formatBreakeven(row.cppBreakevenAge)} / OAS{' '}
-                                    {formatBreakeven(row.oasBreakevenAge)}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2">
-                                    {row.fundedStatus}
-                                  </td>
-                                  <td className="border-t border-ds-outline-variant/60 px-2 py-2 text-right">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant={row.isBest ? 'default' : 'outline'}
-                                      disabled={isTimingSaving || isComparingTiming}
-                                      onClick={() => void handleApplyComparison(row)}
-                                      className="h-7 rounded-sm px-2 text-xs"
-                                    >
-                                      Apply
-                                    </Button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                      <TimingComparisonTable
+                        comparisons={timingComparisons}
+                        isTimingSaving={isTimingSaving}
+                        isComparingTiming={isComparingTiming}
+                        onApply={(row) => void handleApplyComparison(row)}
+                      />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

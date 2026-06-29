@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { YearByYearTab, extractProjectionRows } from '../YearByYearTab';
+import { YearByYearTab } from '../YearByYearTab';
+import { extractProjectionRows } from '../year-by-year-helpers';
 import type { ProjectionYearRow, ScenarioDecisions } from '@retireops/shared';
 
 vi.mock('@/hooks/useOverrideEditor', () => ({

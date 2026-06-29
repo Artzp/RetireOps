@@ -51,14 +51,7 @@ import {
 } from '@/lib/api/profile-scenarios';
 import type { ProfileScenarioListItem, ProfileScenarioStatus } from '@/types/profile-scenario';
 import { NewScenarioDialog } from '@/components/profile/scenarios/NewScenarioDialog';
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
+import { formatDate } from '@/lib/utils';
 
 export default function ScenariosPage() {
   const { toast } = useToast();
@@ -183,7 +176,7 @@ export default function ScenariosPage() {
           s.id === scenarioId
             ? {
                 ...s,
-                status: 'completed' as ProfileScenarioStatus,
+                status: 'completed',
                 calculated_at: new Date().toISOString(),
               }
             : s

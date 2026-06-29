@@ -23,19 +23,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { getProfileScenario, runProfileScenario } from '@/lib/api/profile-scenarios';
 import { useProjectionDisplayMode } from '@/hooks/useProjectionDisplayMode';
 import { applyDisplayMode } from '@/lib/projection/display-mode';
+import { formatDate } from '@/lib/utils';
 import type { ProfileScenarioDetail } from '@/types/profile-scenario';
 import type { MonteCarloJobResult, ProjectionYearRow } from '@retireops/shared/types';
 import { readMonteCarloResult, writeMonteCarloResult } from '@/lib/monte-carlo-cache';
 
 const DEFAULT_INFLATION_RATE = 0.025;
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-CA', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 function csvCell(value: unknown): string {
   if (value === undefined || value === null) return '';
@@ -411,7 +404,7 @@ export default function ScenarioResultsPage() {
               nominalRows={projectionRows}
               displayMode={displayMode}
               scenarioId={id}
-              initialDecisions={scenario.decisions as any}
+              initialDecisions={scenario.decisions}
               onScenarioUpdated={(updated) => setScenario(updated)}
             />
           </TabsContent>

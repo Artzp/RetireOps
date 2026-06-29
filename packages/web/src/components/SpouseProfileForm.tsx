@@ -6,10 +6,7 @@
  * Displays when marital status is 'married' or 'commonLaw'.
  */
 'use client';
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
@@ -28,22 +25,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { api } from '@/lib/api/client';
-
-const provinces = [
-  { code: 'AB', name: 'Alberta' },
-  { code: 'BC', name: 'British Columbia' },
-  { code: 'MB', name: 'Manitoba' },
-  { code: 'NB', name: 'New Brunswick' },
-  { code: 'NL', name: 'Newfoundland and Labrador' },
-  { code: 'NS', name: 'Nova Scotia' },
-  { code: 'NT', name: 'Northwest Territories' },
-  { code: 'NU', name: 'Nunavut' },
-  { code: 'ON', name: 'Ontario' },
-  { code: 'PE', name: 'Prince Edward Island' },
-  { code: 'QC', name: 'Quebec' },
-  { code: 'SK', name: 'Saskatchewan' },
-  { code: 'YT', name: 'Yukon' },
-];
+import { PROVINCES } from '@/components/profile/lib/profile-constants';
 
 export interface SpouseSettings {
   dateOfBirth: string | null;
@@ -224,7 +206,7 @@ export function SpouseProfileForm({ maritalStatus }: SpouseProfileFormProps) {
                 <SelectValue placeholder="Select province" />
               </SelectTrigger>
               <SelectContent>
-                {provinces.map((province) => (
+                {PROVINCES.map((province) => (
                   <SelectItem key={province.code} value={province.code}>
                     {province.name}
                   </SelectItem>

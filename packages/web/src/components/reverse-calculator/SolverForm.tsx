@@ -29,6 +29,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { FieldLabelHelp } from '@/components/ui/field-help';
 import { cn } from '@/lib/utils';
+import { CPP_START_AGES, OAS_START_AGES } from '@/lib/pension-ages';
+import { PROVINCES } from '@/components/profile/lib/profile-constants';
 
 interface SolverFormProps {
   prefillData: SolverPrefillData | null;
@@ -60,24 +62,6 @@ const MODES: { id: SolverMode; label: string; description: string }[] = [
   },
 ];
 
-const PROVINCES = [
-  { code: 'AB', name: 'Alberta' },
-  { code: 'BC', name: 'British Columbia' },
-  { code: 'MB', name: 'Manitoba' },
-  { code: 'NB', name: 'New Brunswick' },
-  { code: 'NL', name: 'Newfoundland and Labrador' },
-  { code: 'NS', name: 'Nova Scotia' },
-  { code: 'NT', name: 'Northwest Territories' },
-  { code: 'NU', name: 'Nunavut' },
-  { code: 'ON', name: 'Ontario' },
-  { code: 'PE', name: 'Prince Edward Island' },
-  { code: 'QC', name: 'Quebec' },
-  { code: 'SK', name: 'Saskatchewan' },
-  { code: 'YT', name: 'Yukon' },
-];
-
-const CPP_START_AGES = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70];
-const OAS_START_AGES = [65, 66, 67, 68, 69, 70];
 const EMPTY_NUMERIC_VALUE = undefined as unknown as number;
 
 const numericField = {

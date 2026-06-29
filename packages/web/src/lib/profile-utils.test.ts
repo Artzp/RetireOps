@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   cppAdjustment,
   oasAdjustment,
+  extractAccountCardArray,
   extractAccountCards,
   extractPropertyCards,
   getHasSpouse,
@@ -54,6 +55,26 @@ describe('oasAdjustment', () => {
   });
 });
 
+describe('extractAccountCardArray', () => {
+  it('returns empty array when accounts is absent', () => {
+    expect(extractAccountCardArray({})).toEqual([]);
+  });
+
+  it('returns the bare array shape unchanged', () => {
+    const cards = [{ id: 'a1' }];
+    expect(extractAccountCardArray({ accounts: cards })).toBe(cards);
+  });
+
+  it('unwraps the { cards: [...] } wrapper shape', () => {
+    const cards = [{ id: 'a1' }];
+    expect(extractAccountCardArray({ accounts: { cards } })).toBe(cards);
+  });
+
+  it('returns empty array for a malformed accounts value', () => {
+    expect(extractAccountCardArray({ accounts: { notCards: 1 } })).toEqual([]);
+  });
+});
+
 describe('extractAccountCards', () => {
   it('returns empty array for empty stepData', () => {
     expect(extractAccountCards({})).toEqual([]);
@@ -65,6 +86,29 @@ describe('extractAccountCards', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.type).toBe('RRSP');
+  });
+
+  it('extracts cards from the { cards: [...] } wrapper shape', () => {
+    const result = extractAccountCards({
+      accounts: { cards: [{ _serverId: 's1', type: 'TFSA', name: 'My TFSA' }] },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe('s1');
+    expect(result[0]?.label).toBe('My TFSA');
+    expect(result[0]?.type).toBe('TFSA');
+  });
+
+  it('drops cards with no stable id (missing both _serverId and id)', () => {
+    const result = extractAccountCards({
+      accounts: [
+        { type: 'RRSP', label: 'No id' },
+        { id: 'a1', type: 'TFSA', label: 'Has id' },
+      ],
+    });
+    // An id-less card is unreferenceable and would render an invalid empty-value
+    // <Select.Item> in the override dropdown, so it is filtered out.
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe('a1');
   });
 });
 
@@ -105,5 +149,15 @@ describe('extractPropertyCards', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0]?.label).toBe('123 Main St');
+  });
+
+  it('drops property cards with no stable id', () => {
+    const result = extractPropertyCards({
+      property_goals: {
+        properties: [{ address: 'No id property' }, { id: 'p1', address: '123 Main St' }],
+      },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe('p1');
   });
 });

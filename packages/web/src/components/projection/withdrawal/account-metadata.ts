@@ -23,7 +23,8 @@
  * @retireops/calculation-engine.
  */
 
-import type { AccountCardInfo } from '@/lib/profile-utils';
+import { asString } from '@/lib/coerce';
+import { extractAccountCardArray, type AccountCardInfo } from '@/lib/profile-utils';
 import type { ProjectionYearRow } from '@retireops/shared';
 import type { AccountCardMetadata } from './types';
 
@@ -63,20 +64,13 @@ function withdrawalFieldForType(row: ProjectionYearRow, type: string): number {
 
 /**
  * Looks up the current balance for an account from stepData.accounts.
- * stepData.accounts may be the raw array or a { cards: [...] } wrapper, mirroring
- * extractAccountCards()'s tolerance.
+ * Shares the raw/`{ cards: [...] }` shape tolerance with extractAccountCards()
+ * via the common extractAccountCardArray() helper.
  */
 function balanceForAccount(stepData: Record<string, unknown>, accountId: string): number {
-  const accountsData = stepData['accounts'];
-  if (!accountsData) return 0;
-  const cards: unknown[] = Array.isArray(accountsData)
-    ? accountsData
-    : Array.isArray((accountsData as Record<string, unknown>).cards)
-      ? ((accountsData as Record<string, unknown>).cards as unknown[])
-      : [];
-  for (const card of cards) {
+  for (const card of extractAccountCardArray(stepData)) {
     const c = card as Record<string, unknown>;
-    const id = String(c['_serverId'] ?? c['id'] ?? '');
+    const id = asString(c['_serverId'] ?? c['id']);
     if (id === accountId) {
       const raw = c['currentBalance'];
       const n = Number(raw);

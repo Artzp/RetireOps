@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { SourceCitationLink } from '@/components/citations/SourceCitationLink';
+import { pensionCitation, PENSION_CITATION_DOC } from './pension-citation';
 import { ConfidenceChip } from '@/components/citations/ConfidenceChip';
 import { YearTag } from '@/components/citations/YearTag';
 import { roundAnnual, roundMonthly } from '@/lib/precision';
@@ -52,7 +53,6 @@ const BUCKET_SHORT_LABEL: Record<EarningsBucketKey, string> = {
   AT_MAX: 'Maximum contributor',
 };
 
-const PLAN_CITATION_DOC = '18-pensions-2026.md';
 const PLAN_CITATION_ANCHOR: Record<Plan, string> = {
   CPP: '2026-cpp-max-retirement-pension',
   QPP: '2026-qpp-max-retirement-pension',
@@ -76,7 +76,7 @@ const SHORT_STATEMENT_LABEL: Record<Plan, string> = {
 };
 
 function buildCitation(plan: Plan): string {
-  return `docs/source-of-truth/${PLAN_CITATION_DOC}#${PLAN_CITATION_ANCHOR[plan]}`;
+  return pensionCitation(PLAN_CITATION_ANCHOR[plan]);
 }
 
 /**
@@ -426,7 +426,7 @@ export function CppEstimatorCard({
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold">{`${planLabel} — Estimate`}</h3>
           <SourceCitationLink
-            doc={PLAN_CITATION_DOC}
+            doc={PENSION_CITATION_DOC}
             anchor={planAnchor}
             label={`2026 ${planLabel}`}
           />

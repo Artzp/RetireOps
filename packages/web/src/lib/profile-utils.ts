@@ -3,6 +3,8 @@
  * @see docs/source-of-truth/05-government-benefits.md - CPP/OAS adjustment formulas
  */
 
+import { asString } from './coerce';
+
 export interface AccountCardInfo {
   id: string;
   label: string;
@@ -17,28 +19,46 @@ export interface AccountCardInfo {
 }
 
 /**
+ * Pulls the raw account-card array out of `stepData.accounts`, tolerating both
+ * the bare-array shape and the `{ cards: [...] }` wrapper that useFieldArray
+ * produces in AccountsStep. Returns [] when accounts is absent or malformed.
+ *
+ * Single source of truth for this shape tolerance — every consumer that reads
+ * account cards from stepData should route through here so the two
+ * representations can never drift apart.
+ */
+export function extractAccountCardArray(stepData: Record<string, unknown>): unknown[] {
+  const accountsData = stepData['accounts'];
+  if (!accountsData) return [];
+  if (Array.isArray(accountsData)) return accountsData;
+  const wrapped = (accountsData as Record<string, unknown>).cards;
+  return Array.isArray(wrapped) ? wrapped : [];
+}
+
+/**
  * Extracts account cards from profile stepData, handling both raw array and
  * cards-wrapper shapes produced by useFieldArray in AccountsStep.
  */
 export function extractAccountCards(stepData: Record<string, unknown>): AccountCardInfo[] {
-  const accountsData = stepData['accounts'];
-  if (!accountsData) return [];
-  const cards: unknown[] = Array.isArray(accountsData)
-    ? accountsData
-    : Array.isArray((accountsData as Record<string, unknown>).cards)
-      ? ((accountsData as Record<string, unknown>).cards as unknown[])
-      : [];
-  return cards.map((card: unknown) => {
-    const c = card as Record<string, unknown>;
-    const rawBalance = c.currentBalance;
-    return {
-      id: String(c._serverId ?? c.id ?? ''),
-      label: String(c.label ?? c.name ?? c.type ?? 'Account'),
-      type: String(c.type ?? ''),
-      currentBalance:
-        typeof rawBalance === 'number' || typeof rawBalance === 'string' ? rawBalance : 0,
-    };
-  });
+  return (
+    extractAccountCardArray(stepData)
+      .map((card: unknown) => {
+        const c = card as Record<string, unknown>;
+        const rawBalance = c.currentBalance;
+        return {
+          id: asString(c._serverId ?? c.id),
+          label: asString(c.label ?? c.name ?? c.type, 'Account'),
+          type: asString(c.type),
+          currentBalance:
+            typeof rawBalance === 'number' || typeof rawBalance === 'string' ? rawBalance : 0,
+        };
+      })
+      // Drop cards with no stable id (missing both _serverId and id). Such a card
+      // can't be referenced by a contribution override, the drawdown order, or
+      // account metadata, and an empty id throws Radix's "<Select.Item /> must have
+      // a value prop that is not an empty string" when rendered as a dropdown option.
+      .filter((card) => card.id !== '')
+  );
 }
 
 export interface PropertyCardInfo {
@@ -59,14 +79,20 @@ export function extractPropertyCards(stepData: Record<string, unknown>): Propert
     : Array.isArray(raw)
       ? (raw as unknown[])
       : [];
-  return propertyCards.map((card: unknown) => {
-    const c = card as Record<string, unknown>;
-    return {
-      id: String(c._serverId ?? c.id ?? ''),
-      label: String(c.address ?? c.label ?? c.name ?? 'Property'),
-      type: String(c.propertyType ?? c.type ?? ''),
-    };
-  });
+  return (
+    propertyCards
+      .map((card: unknown) => {
+        const c = card as Record<string, unknown>;
+        return {
+          id: asString(c._serverId ?? c.id),
+          label: asString(c.address ?? c.label ?? c.name, 'Property'),
+          type: asString(c.propertyType ?? c.type),
+        };
+      })
+      // Drop cards with no stable id — see extractAccountCards: unreferenceable and
+      // an empty id breaks Radix <Select.Item> when rendered as a property option.
+      .filter((card) => card.id !== '')
+  );
 }
 
 /**
@@ -125,22 +151,4 @@ export function oasAdjustment(age: number): { pct: number; months: number; label
   const months = (age - 65) * 12;
   const pct = months * 0.6;
   return { pct, months, label: `+${pct.toFixed(1)}% (${String(months)} months deferred)` };
-}
-
-/**
- * Formats a dollar amount in CAD for display.
- */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: 'CAD',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-/**
- * Formats a decimal fraction as a percentage string (e.g. 0.065 → "6.5%").
- */
-export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
 }

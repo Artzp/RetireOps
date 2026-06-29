@@ -51,6 +51,15 @@ export default tseslint.config(
       'prefer-const': 'error',
       'no-var': 'error',
       eqeqeq: ['error', 'always'],
+
+      // Maintainability guardrails — flag tangled control flow so spaghetti
+      // can't creep back in. `warn` (not `error`) keeps the 0-error baseline and
+      // the pre-commit hook green while surfacing real complexity hotspots for
+      // incremental cleanup (same philosophy as the strict-type-checked warns
+      // above). Both measure statement branching/nesting, so JSX markup depth
+      // does not false-positive.
+      complexity: ['warn', 20],
+      'max-depth': ['warn', 4],
     },
   },
   {
