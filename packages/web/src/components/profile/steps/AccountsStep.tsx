@@ -26,6 +26,7 @@ import { CollapsibleCard } from '@/components/profile/CollapsibleCard';
 import { GlossaryLink } from '@/components/glossary/GlossaryLink';
 import {
   ACCOUNT_TYPES,
+  ACCOUNT_TYPE_DESCRIPTIONS,
   END_CONDITION_OPTIONS,
   type AccountCard,
 } from '@/components/profile/lib/profile-constants';
@@ -410,8 +411,15 @@ export function AccountsStep() {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             {ACCOUNT_TYPES.map((type) => (
-              <DropdownMenuItem key={type} onSelect={() => handleAddType(type)}>
-                {type}
+              <DropdownMenuItem
+                key={type}
+                onSelect={() => handleAddType(type)}
+                className="flex-col items-start gap-0.5"
+              >
+                <span className="font-medium">{type}</span>
+                <span className="text-xs text-muted-foreground">
+                  {ACCOUNT_TYPE_DESCRIPTIONS[type]}
+                </span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>

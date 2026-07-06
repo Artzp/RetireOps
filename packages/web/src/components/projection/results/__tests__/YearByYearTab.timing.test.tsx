@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { YearByYearTab } from '../YearByYearTab';
-import { extractProjectionRows } from '../year-by-year-helpers';
+import { extractProjectionRows, inferBenefitAt65 } from '../year-by-year-helpers';
 import type { ProjectionYearRow, ScenarioDecisions } from '@retireops/shared';
 
 vi.mock('@/hooks/useOverrideEditor', () => ({
@@ -113,6 +113,27 @@ describe('YearByYearTab government pension timing support', () => {
     expect(screen.getByRole('combobox', { name: 'Spouse CPP age' })).toHaveTextContent('Age 70');
     expect(screen.getByRole('combobox', { name: 'Spouse OAS age' })).toHaveTextContent('Age 70');
     expect(screen.getByRole('combobox', { name: 'Spouse life age' })).toHaveTextContent('Age 97');
+  });
+
+  it('prefers result_data.assumptions.expectedCPPAt65 over inferring from nominal rows', async () => {
+    const user = userEvent.setup();
+    render(
+      <YearByYearTab
+        // The row would infer a high CPP base (39,800 / factor(65)=1 → clamps to
+        // 25k), but assumptions carries the authoritative profile value, which
+        // must win so the timing default isn't an inflation-inflated estimate.
+        data={{
+          projectionRows: [makeRow(2035, { age: 65, cppIncome: 39_800 })],
+          assumptions: { expectedCPPAt65: 19_880 },
+        }}
+        scenarioId="scenario-1"
+        initialDecisions={{}}
+        onScenarioUpdated={vi.fn()}
+      />
+    );
+    await expandTimingPanel(user);
+    expect(screen.getByDisplayValue('19880')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('25000')).not.toBeInTheDocument();
   });
 
   it('outcome summary calculates lifetime and depletion values from projection rows', async () => {
@@ -294,6 +315,27 @@ describe('YearByYearTab government pension timing support', () => {
  * householdTotalTax = householdTaxesPaid = primary taxesPaid + spouse
  * taxesPaid (OAS recovery tax tracked separately).
  */
+describe('inferBenefitAt65 — clamps inferred CPP base to the schema ceiling', () => {
+  // Regression: the "Compare Timing" panel sends the inferred expectedCPPAt65 to
+  // POST /preview-decisions, which validates against ScenarioDecisionsSchema
+  // (expectedCPPAt65 ≤ $25k). The source rows are nominal, so a CPP that starts
+  // far in the future (e.g. a 41-year-old deferring to 70) backs out an inflated
+  // base; an >$25k default 400s every preset preview and breaks the whole panel.
+  const cppRow = (cppIncome: number, age: number) =>
+    ({ cppIncome, age, year: 2055 }) as unknown as ProjectionYearRow;
+
+  it('clamps a nominal-inflated back-out to the $25k schema ceiling', () => {
+    // 40k nominal at age 70 / deferral factor 1.42 ≈ 28.2k → would 400 unclamped.
+    const result = inferBenefitAt65([cppRow(40_000, 70)], 'cppIncome', 'age', 70, 0);
+    expect(result).toBe(25_000);
+  });
+
+  it('leaves an in-range CPP estimate untouched', () => {
+    const result = inferBenefitAt65([cppRow(12_000, 65)], 'cppIncome', 'age', 65, 0);
+    expect(result).toBe(12_000);
+  });
+});
+
 describe('extractProjectionRows legacy-row normalization (audit D-05)', () => {
   it('derives householdTotalTax for legacy rows missing it', () => {
     const legacyRows = [

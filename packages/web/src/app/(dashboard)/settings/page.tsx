@@ -432,12 +432,10 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="theme">Theme</Label>
-                  <Select
-                    value={preferences.theme}
-                    onValueChange={(value: Theme) =>
-                      setPreferences({ ...preferences, theme: value })
-                    }
-                  >
+                  {/* Disabled: the saved preference is never applied (no dark
+                      class is set anywhere) — a picker that pretends to work
+                      erodes trust. Re-enable when theming ships. */}
+                  <Select value={preferences.theme} disabled>
                     <SelectTrigger id="theme">
                       <SelectValue />
                     </SelectTrigger>
@@ -447,6 +445,9 @@ export default function SettingsPage() {
                       <SelectItem value="system">System</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Theme switching isn&apos;t available yet — coming soon.
+                  </p>
                 </div>
               </div>
 
@@ -613,20 +614,26 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
-              <CardDescription>Update your account password.</CardDescription>
+              <CardDescription>
+                Password changes aren&apos;t available yet — coming soon. Use &ldquo;Forgot
+                password?&rdquo; on the sign-in page if you need to reset yours.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Inputs disabled: the form was never wired to an endpoint —
+                  collecting a password that goes nowhere is worse than saying
+                  the feature isn't ready. */}
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Current Password</Label>
-                <Input id="currentPassword" type="password" />
+                <Input id="currentPassword" type="password" disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" />
+                <Input id="newPassword" type="password" disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input id="confirmPassword" type="password" />
+                <Input id="confirmPassword" type="password" disabled />
               </div>
               <div className="flex justify-end">
                 <Button disabled>Update Password</Button>
@@ -644,7 +651,8 @@ export default function SettingsPage() {
                 <div>
                   <p className="font-medium">Delete Account</p>
                   <p className="text-sm text-muted-foreground">
-                    Permanently delete your account and all data.
+                    Permanently delete your account and all data. Not available in-app yet — coming
+                    soon.
                   </p>
                 </div>
                 <Button variant="destructive" disabled>

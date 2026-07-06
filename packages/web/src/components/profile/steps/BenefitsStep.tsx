@@ -141,31 +141,31 @@ export function BenefitsStep() {
             <Input
               type="number"
               className={INPUT_STYLE}
-              aria-describedby={`cpp-${person}-estimated-help`}
+              aria-describedby={`cpp-${person}-estimated-help cpp-${person}-estimator-hint`}
               {...register(`benefits.cpp_${person}.estimatedAnnual`)}
             />
+            <p id={`cpp-${person}-estimator-hint`} className="mt-1 text-xs text-muted-foreground">
+              Don&apos;t know this number? Leave it blank — the next step (Government Pensions) has
+              an estimator that works it out from your work history.
+            </p>
           </div>
-          {/* Survivor toggle (D-06) */}
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`cpp_survivor_${person}`}
-              checked={survivorEnabled}
-              onCheckedChange={(checked) =>
-                setValue(`benefits.cpp_${person}.survivorsPensionEnabled`, checked === true)
-              }
-            />
-            <Label htmlFor={`cpp_survivor_${person}`}>Include survivor&apos;s pension</Label>
-          </div>
-          {survivorEnabled && (
-            <div>
-              <Label className="text-sm font-bold">Estimated survivor&apos;s pension ($)</Label>
-              <Input
-                type="number"
-                className={INPUT_STYLE}
-                {...register(`benefits.cpp_${person}.survivorsPensionAmount`)}
-              />
+          {/* Survivor toggle (D-06). Disabled: the projection does not consume
+              survivorsPensionEnabled/Amount yet (assembler never reads them) —
+              collecting the input silently would be a trust-eroding no-op.
+              Re-enable when the engine models CPP survivor benefits from the
+              profile (bug-milestone backlog). */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Checkbox id={`cpp_survivor_${person}`} checked={survivorEnabled} disabled />
+              <Label htmlFor={`cpp_survivor_${person}`} className="text-muted-foreground">
+                Include survivor&apos;s pension
+              </Label>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground pl-6">
+              A CPP survivor&apos;s pension is a monthly benefit paid to a surviving spouse or
+              common-law partner. Not yet included in projections — coming soon.
+            </p>
+          </div>
         </div>
 
         <Separator className="my-6" />
@@ -187,9 +187,13 @@ export function BenefitsStep() {
             <Input
               type="number"
               className={INPUT_STYLE}
-              aria-describedby={`oas-${person}-estimated-help`}
+              aria-describedby={`oas-${person}-estimated-help oas-${person}-estimator-hint`}
               {...register(`benefits.oas_${person}.estimatedAnnual`)}
             />
+            <p id={`oas-${person}-estimator-hint`} className="mt-1 text-xs text-muted-foreground">
+              Don&apos;t know this number? Leave it blank — the next step (Government Pensions) has
+              an estimator based on your years in Canada.
+            </p>
           </div>
           <div>
             <FieldLabelHelp
@@ -218,6 +222,21 @@ export function BenefitsStep() {
 
         {/* Pension cards section */}
         <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold">Not sure which you have?</span> Check your pension
+            statement: a <span className="font-semibold">DB (defined benefit)</span> plan promises a
+            set income for life — common in government, education, and healthcare. A{' '}
+            <span className="font-semibold">DC (defined contribution)</span> plan shows an account
+            balance that you and your employer pay into, like an investment account.
+          </p>
+          {/* Honest-status note: wizard DC pensions (benefits.pensions with
+              type='DC Pension') are not consumed by the assembler yet — only DB
+              pensions feed the projection. Don't let users assume otherwise. */}
+          <p className="text-xs text-muted-foreground">
+            Heads up: DB pension income is included in projections, but DC pension balances
+            aren&apos;t yet — coming soon. To model a DC plan today, add its balance as an account
+            on the Accounts step.
+          </p>
           <div className="flex gap-2">
             <Button
               type="button"
@@ -411,20 +430,32 @@ export function BenefitsStep() {
                               />
                             </div>
                             <div>
-                              <Label className="text-sm font-bold">Contribution rate (%)</Label>
+                              <FieldLabelHelp
+                                helpId={`pension-${origIdx}-contributionRate-help`}
+                                help="Percent of your gross salary you put into the plan each year — check your pay stub or pension statement (e.g. 5 means 5% of salary)."
+                              >
+                                Contribution rate (%)
+                              </FieldLabelHelp>
                               <Input
                                 type="number"
                                 step="0.1"
                                 className={INPUT_STYLE}
+                                aria-describedby={`pension-${origIdx}-contributionRate-help`}
                                 {...register(`benefits.pensions.${origIdx}.contributionRate`)}
                               />
                             </div>
                             <div>
-                              <Label className="text-sm font-bold">Employer match rate (%)</Label>
+                              <FieldLabelHelp
+                                helpId={`pension-${origIdx}-employerMatchRate-help`}
+                                help="Percent of your gross salary your employer adds on top of your own contributions — from your plan booklet or HR."
+                              >
+                                Employer match rate (%)
+                              </FieldLabelHelp>
                               <Input
                                 type="number"
                                 step="0.1"
                                 className={INPUT_STYLE}
+                                aria-describedby={`pension-${origIdx}-employerMatchRate-help`}
                                 {...register(`benefits.pensions.${origIdx}.employerMatchRate`)}
                               />
                             </div>

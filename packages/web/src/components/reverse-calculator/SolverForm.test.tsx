@@ -182,4 +182,42 @@ describe('SolverForm', () => {
       );
     });
   });
+
+  /**
+   * Regression: the goal inputs (targetRetirementAge, retirementSpending) default
+   * to the values shown as placeholders, so the form is submittable on first
+   * Calculate. Previously they defaulted to undefined and an untouched submit
+   * failed with a raw "expected number, received undefined" Zod error even though
+   * the form looked ready.
+   * @see TC-E2E-REVERSE-001
+   */
+  it('is submittable on first Calculate without typing into the goal fields', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SolverForm
+        prefillData={mockPrefillData}
+        onSubmit={onSubmit}
+        isSubmitting={false}
+        error={null}
+      />
+    );
+
+    // Submit WITHOUT touching targetRetirementAge / retirementSpending.
+    const form = screen.getByLabelText(/Target Retirement Age/i).closest('form');
+    expect(form).not.toBeNull();
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'required-savings',
+          targetRetirementAge: 65,
+          retirementSpending: 50000,
+        })
+      );
+    });
+  });
 });

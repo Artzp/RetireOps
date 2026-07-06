@@ -15,7 +15,18 @@ export function validate(schemas: ValidateOptions) {
         req.body = await schemas.body.parseAsync(req.body);
       }
       if (schemas.query) {
-        req.query = (await schemas.query.parseAsync(req.query)) as typeof req.query;
+        // Express 5 makes `req.query` a getter-only property, so a direct
+        // `req.query = ...` throws "Cannot set property query of
+        // #<IncomingMessage> which has only a getter" and 500s every
+        // query-validated route. Redefine the property on the request instance
+        // instead so downstream handlers still read the parsed/coerced value.
+        const parsedQuery = (await schemas.query.parseAsync(req.query)) as typeof req.query;
+        Object.defineProperty(req, 'query', {
+          value: parsedQuery,
+          writable: true,
+          configurable: true,
+          enumerable: true,
+        });
       }
       if (schemas.params) {
         req.params = (await schemas.params.parseAsync(req.params)) as typeof req.params;

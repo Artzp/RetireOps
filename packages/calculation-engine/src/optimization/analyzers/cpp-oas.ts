@@ -10,7 +10,7 @@
  */
 import type { InsightCard } from '@retireops/shared';
 import type { OptimizationInput } from '../types.js';
-import { calculateCPPBreakEvenAge } from '../../benefits/cpp.js';
+import { calculateCPPBreakEvenAge, calculateCPPBenefit } from '../../benefits/cpp.js';
 import { calculateOASBreakEvenAge } from '../../benefits/oas.js';
 
 // ---------------------------------------------------------------------------
@@ -70,8 +70,12 @@ function buildPersonCard(
     );
     actions.push('Consider starting CPP at 65 instead of 60.');
     // Rough lifetime gain: years of net benefit × annual difference after breakeven
-    const earlyBenefitAt65 = expectedCPPAt65 * (1 - 60 * 12 * 0.006); // 0.6%/month for 60 months
-    const lateBenefitAt65 = expectedCPPAt65; // full at 65
+    // Lifetime gain ≈ post-breakeven annual advantage × years lived past
+    // breakeven. Use the canonical adjustment helper so the early-start benefit
+    // matches the engine (0.6%/month reduction over the 60-month early window →
+    // ×0.64), not a hand-rolled factor that mis-scaled the window to 60 years.
+    const earlyBenefitAt65 = calculateCPPBenefit(expectedCPPAt65, 60);
+    const lateBenefitAt65 = calculateCPPBenefit(expectedCPPAt65, 65);
     const annualDiff = lateBenefitAt65 - earlyBenefitAt65;
     const yearsOfGain = lifeExpectancy - cpp60vs65;
     if (yearsOfGain > 0) {
@@ -84,8 +88,8 @@ function buildPersonCard(
     parts.push(`Further deferring to 70 breaks even at age ${String(breakevenFormatted)}.`);
     actions.push('Consider whether deferring CPP to 70 fits your income plan.');
     // Benefit of deferring 65→70: 8.4%/year × 5 years = 42% more
-    const earlyBenefitAt70 = expectedCPPAt65;
-    const lateBenefitAt70 = expectedCPPAt65 * (1 + 60 * 0.007); // 0.7%/month for 60 months
+    const earlyBenefitAt70 = calculateCPPBenefit(expectedCPPAt65, 65);
+    const lateBenefitAt70 = calculateCPPBenefit(expectedCPPAt65, 70);
     const annualDiff = lateBenefitAt70 - earlyBenefitAt70;
     const yearsOfGain = lifeExpectancy - cpp65vs70;
     if (yearsOfGain > 0) {

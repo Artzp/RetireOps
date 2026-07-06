@@ -19,6 +19,13 @@ function formatMetricValue(name: string, value: number | null): string {
   return formatCurrency(value);
 }
 
+// The API labels this metric "Probability of Success (%)" but the compared
+// value is deterministic years-funded on a single path, not a probability —
+// relabel at render so novices don't read it as Monte Carlo output.
+const METRIC_LABEL_OVERRIDES: Record<string, string> = {
+  probabilityOfSuccess: 'Years funded (single path, %)',
+};
+
 function DeltaDisplay({
   delta,
   percentChange,
@@ -38,12 +45,22 @@ function DeltaDisplay({
     return <span className="text-muted-foreground text-xs">no change</span>;
   }
 
+  // Direction is stated in words, not just arrow + color — "13.6%" alone is
+  // ambiguous and invisible to screen readers / colorblind users.
   return (
     <span
-      className={`inline-flex items-center text-xs ${isBetter ? 'text-ds-primary' : 'text-ds-error'}`}
+      className={`inline-flex items-center gap-0.5 text-xs ${isBetter ? 'text-ds-primary' : 'text-ds-error'}`}
     >
-      {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-      {percentChange !== null ? `${Math.abs(percentChange).toFixed(1)}%` : ''}
+      {isPositive ? (
+        <ArrowUp className="h-3 w-3" aria-hidden />
+      ) : (
+        <ArrowDown className="h-3 w-3" aria-hidden />
+      )}
+      {percentChange !== null
+        ? `${Math.abs(percentChange).toFixed(1)}% ${isPositive ? 'higher' : 'lower'}`
+        : isPositive
+          ? 'higher'
+          : 'lower'}
     </span>
   );
 }
@@ -98,7 +115,9 @@ export function ComparisonView({ data, onBack }: ComparisonViewProps) {
                     key={metric.name}
                     className={`border-b border-ds-outline-variant/50 last:border-0 hover:bg-ds-surface-raised/40 transition-colors ${index % 2 === 1 ? 'bg-ds-surface-raised/20' : ''}`}
                   >
-                    <td className="py-2 pr-4 text-muted-foreground">{metric.label}</td>
+                    <td className="py-2 pr-4 text-muted-foreground">
+                      {METRIC_LABEL_OVERRIDES[metric.name] ?? metric.label}
+                    </td>
                     <td className="text-right py-2 px-4 font-medium">
                       {formatMetricValue(metric.name, metric.base)}
                     </td>

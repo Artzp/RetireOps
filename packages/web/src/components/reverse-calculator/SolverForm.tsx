@@ -62,8 +62,6 @@ const MODES: { id: SolverMode; label: string; description: string }[] = [
   },
 ];
 
-const EMPTY_NUMERIC_VALUE = undefined as unknown as number;
-
 const numericField = {
   setValueAs: (value: unknown) => {
     if (value === '' || value === null || value === undefined) return undefined;
@@ -109,11 +107,15 @@ function buildDefaultValues(mode: SolverMode, prefill: SolverPrefillData | null)
     lifeExpectancy: 90,
     // dateOfBirth will be derived at submit time from currentAge
     dateOfBirth: '',
-    // mode-specific fields
-    targetRetirementAge: EMPTY_NUMERIC_VALUE,
-    retirementSpending: EMPTY_NUMERIC_VALUE,
-    retirementAge: EMPTY_NUMERIC_VALUE,
-    annualSavingsRate: EMPTY_NUMERIC_VALUE,
+    // Mode-specific goal inputs. Default to the sensible starting values shown
+    // as placeholders so the form is submittable on first Calculate — otherwise
+    // an untouched field stays undefined and Calculate fails with a raw Zod
+    // "expected number, received undefined" error even though the form looks
+    // ready. All remain editable.
+    targetRetirementAge: 65,
+    retirementSpending: 50_000,
+    retirementAge: 65,
+    annualSavingsRate: 20_000,
   };
   return baseValues;
 }

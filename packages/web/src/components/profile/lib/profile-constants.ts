@@ -185,6 +185,19 @@ export const ACCOUNT_TYPES = [
   'RESP',
 ] as const;
 
+/** Plain-language one-liners for the Add Account menu — the acronyms alone
+ * assume knowledge a novice doesn't have (the Income menu already uses
+ * descriptive labels; this matches that house style). */
+export const ACCOUNT_TYPE_DESCRIPTIONS: Record<(typeof ACCOUNT_TYPES)[number], string> = {
+  RRSP: 'Registered Retirement Savings Plan — tax-deferred retirement savings',
+  TFSA: 'Tax-Free Savings Account — growth and withdrawals are tax-free',
+  LIRA: 'Locked-In Retirement Account — pension money from a former employer',
+  DPSP: 'Deferred Profit Sharing Plan — employer profit-sharing contributions',
+  ESPP: 'Employee Share Purchase Plan — shares of your employer',
+  'Non-Registered': 'Regular investment account — no tax shelter',
+  RESP: "Registered Education Savings Plan — savings for a child's education",
+};
+
 export const DEBT_TYPES = [
   'Mortgage',
   'Car Loan',

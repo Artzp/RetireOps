@@ -1,7 +1,7 @@
 # Bug Report: Projection Wizard & UI Issues
 
 **Discovered:** 2026-03-07
-**Method:** Manual UI testing via Playwright (test user: `e2e@retireops.test`)
+**Method:** Manual UI testing via Playwright (dedicated e2e test user)
 **Scope:** `/projections` — list, detail, new wizard, scenarios
 
 ---

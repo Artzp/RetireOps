@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FieldLabelHelp } from '@/components/ui/field-help';
 import { useToast } from '@/components/ui/use-toast';
 
 const MonteCarloFanChartDynamic = dynamic(
@@ -194,9 +194,17 @@ export function MonteCarloPanel({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Mean Return input */}
           <div className="space-y-2">
-            <Label htmlFor="mc-mean-return">Mean Return (%)</Label>
+            <FieldLabelHelp
+              htmlFor="mc-mean-return"
+              helpId="mc-mean-return-help"
+              help="The average yearly investment return (before inflation) the simulation centres on. The risk-profile presets set this for you."
+              className="font-medium"
+            >
+              Mean Return (%)
+            </FieldLabelHelp>
             <Input
               id="mc-mean-return"
+              aria-describedby="mc-mean-return-help"
               type="number"
               min={0}
               max={20}
@@ -208,9 +216,17 @@ export function MonteCarloPanel({
           </div>
           {/* Standard Deviation input */}
           <div className="space-y-2">
-            <Label htmlFor="mc-std-dev">Standard Deviation (%)</Label>
+            <FieldLabelHelp
+              htmlFor="mc-std-dev"
+              helpId="mc-std-dev-help"
+              help="How much returns swing from year to year — higher means wilder markets in the simulation. Stock-heavy portfolios are typically 10–20%; the presets pick a sensible value."
+              className="font-medium"
+            >
+              Standard Deviation (%)
+            </FieldLabelHelp>
             <Input
               id="mc-std-dev"
+              aria-describedby="mc-std-dev-help"
               type="number"
               min={1}
               max={50}
@@ -222,9 +238,17 @@ export function MonteCarloPanel({
           </div>
           {/* Trial Count input */}
           <div className="space-y-2">
-            <Label htmlFor="mc-trials">Number of Trials</Label>
+            <FieldLabelHelp
+              htmlFor="mc-trials"
+              helpId="mc-trials-help"
+              help="How many random market futures to simulate. More trials give a steadier success rate but take longer — 1,000 is plenty for most plans."
+              className="font-medium"
+            >
+              Number of Trials
+            </FieldLabelHelp>
             <Input
               id="mc-trials"
+              aria-describedby="mc-trials-help"
               type="number"
               min={100}
               max={10000}
@@ -298,6 +322,11 @@ export function MonteCarloPanel({
               <p className="text-sm text-muted-foreground">
                 ({Math.round((result.successRate * result.numSimulations) / 100)} of{' '}
                 {result.numSimulations} trials ended without depletion)
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                This answers a different question than the Summary tab&apos;s &ldquo;years
+                funded&rdquo; figure: that one follows a single steady-return path, while this
+                counts the share of simulated volatile-market paths that never ran out of money.
               </p>
             </div>
 

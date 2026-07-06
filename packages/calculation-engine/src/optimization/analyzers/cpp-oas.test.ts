@@ -197,6 +197,16 @@ describe('TC-OPT-CPP-001: CPP breakeven age calculations', () => {
     expect(card.appliesTo).toBe('primary');
     expect(card.confidence).toBe('MEDIUM');
     expect(Number.isInteger(card.estimatedDollarImpact)).toBe(true);
+
+    // Regression guard (CPP timing units bug): the lifetime impact is an
+    // INCREMENTAL gain from shifting the CPP start age — it can never exceed
+    // total lifetime CPP itself. A mis-scaled early-start factor (the 60-month
+    // early window read as 60 *years*: `60 * 12 * 0.006`) once inflated this
+    // ~7x, surfacing a ludicrous ">$900k lifetime impact" in the Optimizations
+    // tab. Bound it to the lifetime-CPP ceiling.
+    const lifetimeCPPCeiling = 12000 * (90 - 65); // expectedCPPAt65 × retirement years
+    expect(card.estimatedDollarImpact).toBeGreaterThan(0);
+    expect(card.estimatedDollarImpact).toBeLessThan(lifetimeCPPCeiling);
   });
 
   it('TC-OPT-CPP-001 life expectancy 72: 65-vs-70 deferral recommendation suppressed', () => {

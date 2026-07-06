@@ -83,6 +83,12 @@ interface YearByYearTabProps {
     projectionRows?: ProjectionYearRow[];
     // yearlyResults kept in shape for backward compat — not used by this component
     yearlyResults?: unknown[];
+    /**
+     * Surfaced from calcInput by profile-scenario.service (FrontendResultData.assumptions).
+     * The authoritative today's-dollars CPP estimate (the user's profile value),
+     * preferred for the timing draft default over inferring from nominal rows.
+     */
+    assumptions?: { expectedCPPAt65?: number };
   };
   // nominalRows: raw nominal projection rows (mode-invariant). When provided,
   // cascade snapshots use these instead of display-adjusted rows. WG-01 fix.
@@ -288,6 +294,12 @@ export function YearByYearTab({
         initialDecisions?.lifeExpectancy ?? inferLifeExpectancy(timingRows, 'age', 90),
       expectedCPPAt65:
         initialDecisions?.expectedCPPAt65 ??
+        // Prefer the projection's authoritative today's-dollars CPP estimate (the
+        // profile value, surfaced on result_data.assumptions) over inferring from
+        // nominal rows — inference inflates for a far-future deferred CPP (see
+        // inferBenefitAt65). Inference stays as the last-resort fallback for legacy
+        // result_data that predates this assumptions field.
+        data.assumptions?.expectedCPPAt65 ??
         inferBenefitAt65(timingRows, 'cppIncome', 'age', initialDecisions?.cppStartAge ?? 65, 0),
       yearsOfResidence: initialDecisions?.yearsOfResidence ?? 40,
       ...(isCouple
@@ -319,6 +331,7 @@ export function YearByYearTab({
       initialDecisions?.oasStartAge,
       initialDecisions?.lifeExpectancy,
       initialDecisions?.expectedCPPAt65,
+      data.assumptions?.expectedCPPAt65,
       initialDecisions?.yearsOfResidence,
       initialDecisions?.spouseCppStartAge,
       initialDecisions?.spouseOasStartAge,

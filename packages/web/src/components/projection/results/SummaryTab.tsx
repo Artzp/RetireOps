@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type {
   FundedStatus,
   LedgerWarning,
@@ -149,6 +150,10 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
       0
     );
 
+  // Count of projected years where OAS recovery tax (clawback) bites — drives a
+  // COMPUTED clawback recommendation instead of a blanket "tax-efficient" claim.
+  const oasClawbackYears = projectionRows.filter((r) => (r.oasClawback ?? 0) > 0).length;
+
   const successRate = summary.probabilityOfSuccess ?? 0;
   const isSuccessful = successRate >= 80;
   const progressIndicatorColor =
@@ -247,7 +252,9 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
             {formatCurrency(metrics.peakNetWorth)}
           </p>
           <p className="text-sm font-sans text-muted-foreground">
-            {peakAge !== undefined ? `at age ${String(peakAge)}` : 'Maximum portfolio value'}
+            {peakAge !== undefined
+              ? `at age ${String(peakAge)}, in future dollars`
+              : 'Maximum portfolio value, in future dollars'}
           </p>
         </div>
       </div>
@@ -458,6 +465,18 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
                 </div>
               );
             })()}
+            {/* T3c bridge: the deterministic banner above and this card answer
+                DIFFERENT questions — without this note novices read them as two
+                contradictory answers to "am I OK?". */}
+            <p className="mt-4 text-xs text-muted-foreground flex items-start gap-1">
+              <Info className="h-3 w-3 shrink-0 mt-0.5" aria-hidden />
+              <span>
+                These two numbers answer different questions. &ldquo;Years funded&rdquo; above
+                follows one steady-return path, while &ldquo;probability of success&rdquo; counts
+                how many of the simulated market paths never ran out of money. A plan can cover most
+                years on the steady path and still fail when markets are volatile.
+              </span>
+            </p>
           </CardContent>
         </Card>
       )}
@@ -476,7 +495,9 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
               {formatCurrency(metrics.peakNetWorth)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {peakAge !== undefined ? `at age ${String(peakAge)}` : 'Maximum portfolio value'}
+              {peakAge !== undefined
+                ? `at age ${String(peakAge)}, in future dollars`
+                : 'Maximum portfolio value, in future dollars'}
             </p>
           </CardContent>
         </Card>
@@ -512,7 +533,10 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
             <div className="text-2xl font-bold text-ds-on-background">
               {formatCurrency(metrics.averageRetirementIncome)}
             </div>
-            <p className="text-xs text-muted-foreground">Per year after tax</p>
+            <p className="text-xs text-muted-foreground">
+              Per year after tax, in future dollars — later retirement years pull this above what
+              you entered in today&apos;s dollars
+            </p>
           </CardContent>
         </Card>
 
@@ -733,24 +757,64 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
           <CardTitle>Recommendations</CardTitle>
         </CardHeader>
         <CardContent>
+          {/*
+            Every line below is derived from THIS projection's computed output —
+            no blanket "your strategy is optimized" claims without a basis (a
+            trust requirement: numbers Canadians can trust). The on-track vs
+            needs-attention pair is mutually exclusive and total, so at least one
+            line always renders. Detailed, ranked, source-of-truth-cited actions
+            live in the Optimizations tab (linked below).
+          */}
           <ul className="space-y-2">
-            {successRate < 80 && (
+            {isSuccessful && summary.moneyLastsToLifeExpectancy !== false && (
               <li className="flex items-start gap-2">
-                <AlertCircle className="h-5 w-5 text-ds-tertiary mt-0.5" />
+                <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
                 <span>
-                  Consider increasing {isCouple ? 'household' : 'your'} savings rate or delaying
-                  retirement to improve your success probability.
+                  Your plan stays funded through your planning horizon
+                  {householdFinalNetWorth > 0
+                    ? `, leaving an estimated ${formatCurrency(householdFinalNetWorth)} estate`
+                    : ''}
+                  .
                 </span>
               </li>
             )}
-            <li className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
-              <span>Your CPP deferral strategy is optimized for your situation.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
-              <span>TFSA withdrawals are being used tax-efficiently in retirement.</span>
-            </li>
+            {(successRate < 80 || summary.moneyLastsToLifeExpectancy === false) && (
+              <li className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-ds-tertiary mt-0.5" />
+                <span>
+                  {summary.moneyLastsToLifeExpectancy === false
+                    ? 'Your portfolio is projected to run out before life expectancy — '
+                    : `Your plan has a ${Math.round(successRate)}% success probability — `}
+                  consider increasing{isCouple ? ' household' : ' your'} savings rate or delaying
+                  retirement.{' '}
+                  <Link
+                    href="/profile?step=accounts"
+                    className="font-medium text-ds-primary underline underline-offset-2 hover:opacity-80"
+                  >
+                    Update your profile &rarr;
+                  </Link>
+                </span>
+              </li>
+            )}
+            {oasClawbackYears > 0 && (
+              <li className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-ds-tertiary mt-0.5" />
+                <span>
+                  Your projected income triggers OAS clawback in {oasClawbackYears}{' '}
+                  {oasClawbackYears === 1 ? 'year' : 'years'} — smoothing taxable income could
+                  reduce the recovery tax.
+                </span>
+              </li>
+            )}
+            {totalBracketFillWithdrawals > 0 && (
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
+                <span>
+                  Bracket-fill withdrawals move {formatCurrency(totalBracketFillWithdrawals)} into
+                  lower tax brackets over your retirement.
+                </span>
+              </li>
+            )}
             {isCouple && totalPensionSplitSavings > 0 && (
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
@@ -760,15 +824,16 @@ export function SummaryTab({ data, displayMode, onSwitchTab, monteCarloSummary }
                 </span>
               </li>
             )}
-            {isCouple && (
-              <li className="flex items-start gap-2">
-                <CheckCircle className="h-5 w-5 text-ds-primary mt-0.5" />
-                <span>
-                  Both spouses&apos; accounts are being coordinated for optimal tax efficiency.
-                </span>
-              </li>
-            )}
           </ul>
+          {onSwitchTab ? (
+            <button
+              type="button"
+              onClick={() => onSwitchTab('optimizations')}
+              className="mt-3 text-sm font-medium text-ds-primary hover:underline"
+            >
+              See detailed, ranked recommendations in Optimizations &rarr;
+            </button>
+          ) : null}
         </CardContent>
       </Card>
     </div>

@@ -4,27 +4,50 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  ArrowRight,
-  Calculator,
-  TrendingUp,
-  Calendar,
-  PiggyBank,
-  RefreshCw,
-  AlertCircle,
-} from 'lucide-react';
+import { ArrowRight, Calculator, TrendingUp, Calendar, PiggyBank } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { useProjections } from '@/hooks/useProjections';
+import { listProfileScenarios } from '@/lib/api/profile-scenarios';
+import type { ProfileScenarioListItem } from '@/types/profile-scenario';
+
+const SCENARIO_STATUS_LABELS: Record<string, string> = {
+  completed: 'Completed',
+  pending: 'Not yet run',
+  stale: 'Outdated',
+  failed: 'Failed',
+};
 
 export default function DashboardPage() {
-  const { projections, pagination, isLoading, error, refetch } = useProjections({ limit: 3 });
+  const { projections, isLoading } = useProjections({ limit: 3 });
   const [userName, setUserName] = useState('');
+  // One vocabulary across the app: the dashboard lists SCENARIOS (what the
+  // Scenarios page shows), not the underlying projection records — the old
+  // "Active Projections: 1" tile contradicted the 2 cards on /profile/scenarios.
+  const [scenarios, setScenarios] = useState<ProfileScenarioListItem[]>([]);
+  const [scenariosLoading, setScenariosLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem('userName');
     if (stored) setUserName(stored);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    listProfileScenarios()
+      .then((list) => {
+        if (!cancelled) setScenarios(list);
+      })
+      .catch(() => {
+        /* tile and list fall back to empty state */
+      })
+      .finally(() => {
+        if (!cancelled) setScenariosLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Use the most recently completed projection for summary stats
@@ -56,16 +79,20 @@ export default function DashboardPage() {
   // Stats derived from real projection data
   const stats = [
     {
-      title: 'Total Net Worth',
+      title: 'Projected Peak Net Worth',
       value: isLoading ? '...' : netWorthValue,
-      change: latestCompleted ? 'Peak net worth' : 'Run a projection to see',
-      trend: latestCompleted ? 'up' : 'neutral',
+      change: latestCompleted
+        ? 'Highest point in your projection, in future dollars — not your net worth today'
+        : 'Run a projection to see',
+      trend: 'neutral',
       icon: PiggyBank,
     },
     {
       title: 'Projected After-Tax Spending Covered',
       value: isLoading ? '...' : retirementIncomeValue,
-      change: latestCompleted ? 'Average in retirement' : 'Run a projection to see',
+      change: latestCompleted
+        ? 'Average across retirement, in future dollars'
+        : 'Run a projection to see',
       trend: 'neutral',
       icon: TrendingUp,
     },
@@ -77,9 +104,9 @@ export default function DashboardPage() {
       icon: Calendar,
     },
     {
-      title: 'Active Projections',
-      value: isLoading ? '...' : String(pagination?.total ?? projections.length),
-      change: 'Total projections',
+      title: 'Scenarios',
+      value: scenariosLoading ? '...' : String(scenarios.length),
+      change: 'Your Base Scenario plus what-if variations',
       trend: 'neutral',
       icon: Calculator,
     },
@@ -100,7 +127,7 @@ export default function DashboardPage() {
         <Link href="/profile">
           <Button>
             <Calculator className="mr-2 h-4 w-4" />
-            New Projection
+            Update Profile &amp; Run
           </Button>
         </Link>
       </div>
@@ -130,14 +157,14 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Recent Projections */}
+        {/* Your Scenarios — same entities the Scenarios page shows */}
         <Card className="bg-ds-surface-raised rounded-card border-0">
           <CardHeader>
-            <CardTitle>Recent Projections</CardTitle>
-            <CardDescription>Your latest retirement projections and scenarios</CardDescription>
+            <CardTitle>Your Scenarios</CardTitle>
+            <CardDescription>Your Base Scenario plus any what-if variations</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {scenariosLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center justify-between rounded-lg p-4">
@@ -149,50 +176,47 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <AlertCircle className="h-8 w-8 text-ds-error" />
-                <p className="text-sm text-muted-foreground">{error}</p>
-                <Button variant="outline" size="sm" onClick={() => void refetch()}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Try Again
-                </Button>
-              </div>
-            ) : projections.length === 0 ? (
+            ) : scenarios.length === 0 ? (
               <div className="text-center py-8">
                 <Calculator className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground mb-4">No projections yet</p>
+                <p className="text-muted-foreground mb-4">No scenarios yet</p>
                 <Link href="/profile">
                   <Button variant="outline" size="sm">
-                    Create Your First Projection
+                    Set Up Your Profile
                   </Button>
                 </Link>
               </div>
             ) : (
               <div className="space-y-4">
-                {projections.map((projection) => (
+                {scenarios.slice(0, 3).map((scenario) => (
                   <Link
-                    key={projection.id}
-                    href={`/projections/${projection.id}`}
+                    key={scenario.id}
+                    href={
+                      scenario.status === 'completed' || scenario.status === 'stale'
+                        ? `/profile/scenarios/${scenario.id}/results`
+                        : '/profile/scenarios'
+                    }
                     className="flex items-center justify-between rounded-lg p-4 hover:bg-ds-surface-overlay transition-colors"
                   >
                     <div className="space-y-1">
-                      <p className="font-medium">{projection.name}</p>
+                      <p className="font-medium">{scenario.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Updated {new Date(projection.updatedAt).toLocaleDateString()}
+                        {scenario.calculated_at
+                          ? `Last run: ${formatDate(scenario.calculated_at)}`
+                          : `Created ${formatDate(scenario.created_at)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                          projection.status === 'completed'
+                          scenario.status === 'completed'
                             ? 'bg-ds-primary-container text-ds-on-primary-container'
-                            : projection.status === 'failed'
+                            : scenario.status === 'failed'
                               ? 'bg-ds-error-container text-ds-on-error-container'
                               : 'bg-ds-tertiary-container text-ds-on-tertiary-container'
                         }`}
                       >
-                        {projection.status}
+                        {SCENARIO_STATUS_LABELS[scenario.status] ?? scenario.status}
                       </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -203,7 +227,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <Link href="/profile/scenarios">
                 <Button variant="outline" className="w-full">
-                  View All Projections
+                  View All Scenarios
                 </Button>
               </Link>
             </div>
@@ -226,9 +250,9 @@ export default function DashboardPage() {
                   <Calculator className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-1">
-                  <p className="font-medium">Create New Projection</p>
+                  <p className="font-medium">Update Your Profile</p>
                   <p className="text-sm text-muted-foreground">
-                    Start a new retirement calculation
+                    Edit your info, then re-run your projection
                   </p>
                 </div>
               </Link>

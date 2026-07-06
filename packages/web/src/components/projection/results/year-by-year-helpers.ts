@@ -8,6 +8,13 @@
 import type { ProjectionYearRow } from '@retireops/shared/types';
 import { CPP_RATES, OAS_RATES } from '@retireops/shared/constants';
 
+// Mirror of ScenarioDecisionsSchema.expectedCPPAt65's ceiling
+// (packages/shared/src/types/scenario.ts — z.number().min(0).max(25_000)).
+// The preview-decisions endpoint validates the timing patch against that
+// schema, so any inferred expectedCPPAt65 above this is rejected with 400 and
+// the whole "Compare Timing" panel fails. See inferBenefitAt65.
+const MAX_EXPECTED_CPP_AT_65 = 25_000;
+
 export type TimingDraft = {
   cppStartAge: number;
   oasStartAge: number;
@@ -135,7 +142,15 @@ export function inferBenefitAt65(
   const amount = row?.[incomeKey];
   if (typeof amount !== 'number' || amount <= 0) return fallback;
   if (incomeKey === 'cppIncome' || incomeKey === 'spouseCppIncome') {
-    return Math.round(amount / calculateCppFactor(startAge));
+    // `amount` is the first NON-ZERO CPP row, which is nominal. Dividing by the
+    // start-age factor backs out an "at 65" base but does NOT remove the years
+    // of inflation baked into a benefit that starts far in the future (e.g. a
+    // 41-year-old deferring CPP to 70). That over-estimates the base, and any
+    // value above MAX_EXPECTED_CPP_AT_65 makes every preview-decisions request
+    // 400, breaking the Compare Timing panel. Clamp to the schema ceiling so the
+    // inferred default is always valid. TODO: de-inflate `amount` (needs the
+    // projection inflationRate + base year) for a fully accurate default.
+    return Math.min(MAX_EXPECTED_CPP_AT_65, Math.round(amount / calculateCppFactor(startAge)));
   }
   const age = row?.[ageKey];
   const age75Factor = typeof age === 'number' && age >= 75 ? 1 + OAS_RATES.age75Bonus : 1;

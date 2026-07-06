@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { FundedStatus, RemediationPlan } from '@retireops/shared';
 
 interface FundedStatusIndicatorProps {
@@ -82,10 +83,22 @@ export function FundedStatusIndicator({
           <li data-testid="remediation-savings">
             Save an additional ${remediationPlan.additionalAnnualSavings.toLocaleString('en-CA')}
             /year before retirement
+            <Link
+              href="/profile?step=accounts"
+              className="ml-2 font-medium underline underline-offset-2 hover:opacity-80"
+            >
+              Adjust contributions &rarr;
+            </Link>
           </li>
           <li data-testid="remediation-spending">
             Reduce annual retirement spending by $
             {remediationPlan.annualSpendingReduction.toLocaleString('en-CA')}
+            <Link
+              href="/profile?step=spending"
+              className="ml-2 font-medium underline underline-offset-2 hover:opacity-80"
+            >
+              Adjust spending &rarr;
+            </Link>
           </li>
           <li data-testid="remediation-delay">
             Delay retirement by {remediationPlan.retirementDelayYears} year(s)
@@ -94,6 +107,12 @@ export function FundedStatusIndicator({
                 (maximum deferral reached — this alone may be insufficient)
               </span>
             )}
+            <Link
+              href="/profile?step=about_you"
+              className="ml-2 font-medium underline underline-offset-2 hover:opacity-80"
+            >
+              Change retirement age &rarr;
+            </Link>
           </li>
         </ul>
       )}

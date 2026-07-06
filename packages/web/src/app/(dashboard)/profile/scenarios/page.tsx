@@ -49,9 +49,11 @@ import {
   deleteProfileScenario,
   runProfileScenario,
 } from '@/lib/api/profile-scenarios';
+import { ApiError } from '@/lib/api/client';
 import type { ProfileScenarioListItem, ProfileScenarioStatus } from '@/types/profile-scenario';
 import { NewScenarioDialog } from '@/components/profile/scenarios/NewScenarioDialog';
 import { formatDate } from '@/lib/utils';
+import { summarizeScenarioDecisions } from '@/lib/scenario-decision-summary';
 
 export default function ScenariosPage() {
   const { toast } = useToast();
@@ -183,8 +185,18 @@ export default function ScenariosPage() {
         )
       );
       router.push(`/profile/scenarios/${scenarioId}/results`);
-    } catch {
-      toast({ variant: 'destructive', title: 'Projection failed. Please try again.' });
+    } catch (err) {
+      setScenarios((prev) =>
+        prev.map((s) => (s.id === scenarioId ? { ...s, status: 'failed' } : s))
+      );
+      toast({
+        variant: 'destructive',
+        title: 'Projection failed',
+        description:
+          err instanceof ApiError && err.message
+            ? err.message
+            : 'This usually means a required profile detail is missing or invalid.',
+      });
       setRunningId(null);
     }
   };
@@ -532,6 +544,43 @@ export default function ScenariosPage() {
                             : `Last run: ${lastRun} · Created ${created}`;
                         })()}
                       </div>
+                      {!scenario.is_base &&
+                        (() => {
+                          const chips = summarizeScenarioDecisions(scenario.decisions);
+                          if (chips.length === 0) return null;
+                          const shown = chips.slice(0, 4);
+                          const extra = chips.length - shown.length;
+                          return (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {shown.map((chip) => (
+                                <span
+                                  key={chip}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-ds-surface-raised text-ds-on-surface-variant"
+                                >
+                                  {chip}
+                                </span>
+                              ))}
+                              {extra > 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-ds-surface-raised text-ds-on-surface-variant">
+                                  +{extra} more
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      {scenario.status === 'failed' && !isThisRunning && (
+                        <p className="text-sm text-ds-on-surface-variant">
+                          This projection couldn&apos;t run — usually a required profile detail is
+                          missing or invalid (like a date of birth or a benefit start age).{' '}
+                          <Link
+                            href="/profile?step=about_you"
+                            className="font-medium text-ds-primary underline underline-offset-2 hover:opacity-80"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Review your profile &rarr;
+                          </Link>
+                        </p>
+                      )}
                     </div>
 
                     {/* Right: primary action + dropdown */}
@@ -578,12 +627,25 @@ export default function ScenariosPage() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link href={`/profile/scenarios/${scenario.id}/edit`}>
-                              <Settings className="mr-2 h-4 w-4" />
-                              Edit Decisions
-                            </Link>
-                          </DropdownMenuItem>
+                          {/* Base is "your profile run as-is" (badge copy) — editing
+                              decisions on it silently forks that model. Point Base at
+                              the profile wizard instead; Clone remains the way to
+                              explore decision changes. */}
+                          {scenario.is_base ? (
+                            <DropdownMenuItem asChild>
+                              <Link href="/profile">
+                                <Settings className="mr-2 h-4 w-4" />
+                                Edit Profile
+                              </Link>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/profile/scenarios/${scenario.id}/edit`}>
+                                <Settings className="mr-2 h-4 w-4" />
+                                Edit Decisions
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => void handleClone(scenario)}>
                             <Copy className="mr-2 h-4 w-4" />
                             Clone

@@ -240,12 +240,28 @@ export function ProfileWizardShell() {
     let cancelled = false;
     async function load() {
       try {
+        // Deep-link support: /profile?step=<slug> overrides the saved resume
+        // step (read once from location.search — useSearchParams would force a
+        // Suspense boundary on this client page).
+        const requestedSlug =
+          typeof window !== 'undefined'
+            ? new URLSearchParams(window.location.search).get('step')
+            : null;
         const profile = await getProfile();
         if (cancelled) return;
         if (profile !== null) {
           const formValues = mapProfileToForm(profile);
           methods.reset(formValues);
-          const resumeIndex = Math.min(profile.currentStep, ALL_STEPS.length - 1);
+          const stepsForProfile = formValues.about_you.includeSpouse
+            ? ALL_STEPS
+            : ALL_STEPS.filter((s) => s.id !== 'spouse');
+          const requestedIndex = requestedSlug
+            ? stepsForProfile.findIndex((s) => s.slug === requestedSlug)
+            : -1;
+          const resumeIndex =
+            requestedIndex >= 0
+              ? requestedIndex
+              : Math.min(profile.currentStep, ALL_STEPS.length - 1);
           setCurrentStepIndex(resumeIndex);
           setVisitedSteps(new Set(Array.from({ length: resumeIndex + 1 }, (_, i) => i)));
         } else {
@@ -377,7 +393,25 @@ export function ProfileWizardShell() {
     [navigateToStep]
   );
 
+  // Fields a projection cannot run without. Everything else has a default or
+  // is optional — these two produce a guaranteed failed run when blank.
+  const essentialDob = methods.watch('about_you.dateOfBirth');
+  const essentialProvince = methods.watch('about_you.province');
+  const missingEssentials: string[] = [
+    ...(essentialDob ? [] : ['date of birth']),
+    ...(essentialProvince ? [] : ['province']),
+  ];
+
   const handleRunProjection = useCallback(async () => {
+    if (missingEssentials.length > 0) {
+      setRunError(
+        `A projection needs your ${missingEssentials.join(' and ')} first — add ${
+          missingEssentials.length > 1 ? 'them' : 'it'
+        } in About You below.`
+      );
+      navigateToStep(0);
+      return;
+    }
     setIsRunning(true);
     setRunError(null);
     try {
@@ -387,7 +421,14 @@ export function ProfileWizardShell() {
       setRunError(err instanceof Error ? err.message : 'Failed to run projection');
       setIsRunning(false);
     }
-  }, [router]);
+  }, [router, missingEssentials, navigateToStep]);
+
+  // Clear the "add your DOB/province first" gate message once the user has
+  // supplied the essentials — leaving it up reads as an unresolved error.
+  const missingCount = missingEssentials.length;
+  useEffect(() => {
+    if (missingCount === 0) setRunError(null);
+  }, [missingCount]);
 
   // -------------------------------------------------------------------------
   // Render states
@@ -501,6 +542,28 @@ export function ProfileWizardShell() {
                   )}
               </div>
             </div>
+
+            {/* Projection readiness nudge — visible on every step so novices
+                know upfront which fields the projection can't run without */}
+            {missingEssentials.length > 0 && !runError && (
+              <div className="mx-4 sm:mx-8 mb-2 p-3 rounded-md bg-amber-50 border border-amber-300 text-sm text-amber-900">
+                To run a projection you&apos;ll need your {missingEssentials.join(' and ')}
+                {currentStepIndex === 0 ? (
+                  <> — you can add {missingEssentials.length > 1 ? 'them' : 'it'} on this step.</>
+                ) : (
+                  <>
+                    .{' '}
+                    <button
+                      type="button"
+                      onClick={() => navigateToStep(0)}
+                      className="font-medium underline underline-offset-2 hover:opacity-80"
+                    >
+                      Add in About You &rarr;
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Run Projection error */}
             {runError && (

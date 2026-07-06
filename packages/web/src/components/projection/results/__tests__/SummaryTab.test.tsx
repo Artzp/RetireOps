@@ -110,3 +110,56 @@ describe('SummaryTab lifetime aggregates (audit D-02)', () => {
     expect(screen.queryByText(/Lifetime bracket-fill withdrawals/)).not.toBeInTheDocument();
   });
 });
+
+describe('SummaryTab recommendations are computed, not blanket claims', () => {
+  // The card used to show unconditional "Your CPP deferral strategy is optimized"
+  // and "TFSA withdrawals are being used tax-efficiently" to EVERY user — even an
+  // underfunded plan. These must never appear (claims without a computed basis).
+  const OLD_CLAIMS = [
+    /deferral strategy is optimized/i,
+    /used tax-efficiently/i,
+    /coordinated for optimal tax efficiency/i,
+  ];
+
+  it('underfunded plan: shows the computed shortfall line and none of the old blanket claims', () => {
+    render(
+      <SummaryTab
+        data={makeCoupleData({
+          summaryExtras: { probabilityOfSuccess: 35, moneyLastsToLifeExpectancy: false },
+        })}
+        displayMode="nominal"
+      />
+    );
+    expect(screen.getByText(/run out before life expectancy/i)).toBeInTheDocument();
+    for (const claim of OLD_CLAIMS) expect(screen.queryByText(claim)).not.toBeInTheDocument();
+  });
+
+  it('funded plan: shows the computed on-track line, still no blanket claims', () => {
+    render(
+      <SummaryTab
+        data={makeCoupleData({
+          summaryExtras: { probabilityOfSuccess: 100, moneyLastsToLifeExpectancy: true },
+        })}
+        displayMode="nominal"
+      />
+    );
+    expect(screen.getByText(/stays funded through your planning horizon/i)).toBeInTheDocument();
+    for (const claim of OLD_CLAIMS) expect(screen.queryByText(claim)).not.toBeInTheDocument();
+  });
+
+  it('surfaces an OAS clawback recommendation only when the projection has clawback years', () => {
+    render(
+      <SummaryTab
+        data={makeCoupleData({
+          summaryExtras: { probabilityOfSuccess: 100, moneyLastsToLifeExpectancy: true },
+          projectionRows: [
+            makeRow({ year: 2035, oasClawback: 1_200 }),
+            makeRow({ year: 2036, oasClawback: 800 }),
+          ],
+        })}
+        displayMode="nominal"
+      />
+    );
+    expect(screen.getByText(/triggers OAS clawback/i)).toBeInTheDocument();
+  });
+});

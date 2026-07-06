@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unnecessary-condition */
 'use client';
 
 import { useRef, useState } from 'react';
@@ -132,13 +132,18 @@ export function PropertyGoalsStep() {
 
   return (
     <div className="space-y-4">
-      {/* Property section */}
+      {/* Property section. Honest-status note: property_goals.properties is not
+          consumed by the assembler yet — don't promise projection inclusion. */}
       <div>
+        <p className="text-xs text-muted-foreground">
+          Heads up: property values and appreciation aren&apos;t included in projection math yet —
+          coming soon. Anything you add here is saved for when they are.
+        </p>
         {propertyFields.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-sm font-bold text-ds-on-background">No properties yet</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Add real estate assets to include property values and appreciation in your projection.
+              Track your real estate here so it&apos;s ready when projections include property.
             </p>
           </div>
         )}
@@ -222,13 +227,18 @@ export function PropertyGoalsStep() {
         </DropdownMenu>
       </div>
 
-      {/* Goal section */}
+      {/* Goal section. Same honest-status note as properties — goals are not
+          consumed by the assembler yet. */}
       <div className="mt-8">
+        <p className="text-xs text-muted-foreground">
+          Heads up: one-time goals aren&apos;t included in projection math yet — coming soon.
+        </p>
         {goalFields.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-sm font-bold text-ds-on-background">No goals yet</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Add one-time expenses like home renovations or travel to plan for future spending.
+              Note upcoming one-time expenses like home renovations or travel — they&apos;ll count
+              once goals are wired into projections.
             </p>
           </div>
         )}
@@ -313,30 +323,24 @@ export function PropertyGoalsStep() {
         </Button>
       </div>
 
-      {/* Legacy section */}
+      {/* Legacy section. Disabled: property_goals.legacy.{enabled,targetAmount}
+          is never read by the assembler — collecting a target that changes
+          nothing in the projection would be a trust-eroding no-op. Re-enable
+          when the engine consumes it (bug-milestone backlog). */}
       <Separator className="my-6" />
       <div className="rounded-lg border border-ds-outline-variant p-6">
         <h2 className="text-base font-bold text-ds-on-background">Legacy</h2>
         <div className="flex items-center gap-2 mt-4">
-          <Checkbox
-            id="legacyEnabled"
-            checked={legacyEnabled}
-            onCheckedChange={(checked) =>
-              setValue('property_goals.legacy.enabled', checked === true)
-            }
-          />
-          <Label htmlFor="legacyEnabled">Leave a legacy</Label>
+          <Checkbox id="legacyEnabled" checked={legacyEnabled} disabled />
+          <Label htmlFor="legacyEnabled" className="text-muted-foreground">
+            Leave a legacy
+          </Label>
         </div>
-        {legacyEnabled && (
-          <div className="mt-4">
-            <Label className="text-sm font-bold">Target inheritance amount ($)</Label>
-            <Input
-              type="number"
-              className={INPUT_STYLE}
-              {...register('property_goals.legacy.targetAmount')}
-            />
-          </div>
-        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          A legacy target sets an amount you want to leave to your estate rather than spend. Not yet
+          included in projections — coming soon. Your projected estate value already appears on the
+          results Summary.
+        </p>
       </div>
 
       {/* Summary bar */}

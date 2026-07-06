@@ -83,7 +83,10 @@ export function AboutYouStep() {
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="dateOfBirth" className="text-sm font-bold">
-            Date of Birth
+            Date of Birth{' '}
+            <span className="font-normal text-xs text-muted-foreground">
+              (required to run a projection)
+            </span>
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -105,7 +108,12 @@ export function AboutYouStep() {
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm font-bold">Province of Residence</Label>
+          <Label className="text-sm font-bold">
+            Province of Residence{' '}
+            <span className="font-normal text-xs text-muted-foreground">
+              (required to run a projection)
+            </span>
+          </Label>
           <Select value={province} onValueChange={(v) => setValue('about_you.province', v)}>
             <SelectTrigger className={SELECT_TRIGGER_STYLE}>
               <SelectValue placeholder="Select province" />
