@@ -40,7 +40,7 @@
     "@retireops/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.1.2",
     "@vitest/coverage-v8": "^4.1.9",
     "rimraf": "^6.1.3",
     "typescript": "^6.0.0",
